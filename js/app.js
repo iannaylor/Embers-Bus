@@ -423,34 +423,6 @@
       $('#btn-edit').classList.toggle('active', on);
       toast(on ? 'Tap a person to change them, or ✖ to remove' : 'Done editing');
     });
-    $('#btn-export').addEventListener('click', () => {
-      Sound.tap();
-      const blob = new Blob([Store.exportPeople()], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'people.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      toast('Saved people.json. Put it in the game folder to share everyone 📤', 4000);
-    });
-    $('#btn-import').addEventListener('click', () => $('#people-file-input').click());
-    $('#people-file-input').addEventListener('change', async e => {
-      const file = e.target.files && e.target.files[0];
-      e.target.value = '';
-      if (!file) return;
-      try {
-        const data = JSON.parse(await file.text());
-        const added = Store.mergePeople(data.people || data, true);
-        renderInside();
-        Sound.cheer();
-        toast(added ? `Added ${added} ${added === 1 ? 'person' : 'people'} 🎉` : 'Everyone was already here');
-      } catch (err) {
-        toast('Sorry, that file did not work');
-      }
-    });
     $('#btn-photo').addEventListener('click', () => $('#file-input').click());
     $('#file-input').addEventListener('change', async e => {
       const file = e.target.files && e.target.files[0];
@@ -1131,6 +1103,26 @@
     });
   }
 
+  /**
+   * Grown-ups only: opening the game with ?export on the end of the address
+   * downloads people.json with everyone in it. Put that file in the game
+   * folder and every device loads them automatically.
+   */
+  function maybeExportPeople() {
+    if (!/[?&]export\b/.test(location.search)) return;
+    const blob = new Blob([Store.exportPeople()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'people.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('Saved people.json with everyone in it 📤', 5000);
+    history.replaceState(null, '', location.pathname);
+  }
+
   /** people.json in the game folder holds the shared family: everyone gets them on every device. */
   function loadSharedPeople() {
     if (!location.protocol.startsWith('http')) return;
@@ -1147,6 +1139,7 @@
   function init() {
     Store.load();
     loadSharedPeople();
+    maybeExportPeople();
     buildSwatches();
     buildSongList();
     applyColor(Store.state.color);

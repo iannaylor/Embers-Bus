@@ -53,12 +53,13 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 Everything (people, seats, seat belts, bus colour) is remembered on the device,
 so the bus is exactly how she left it next time.
 
-**Sharing the family between devices**
-- Tap ✏️ then 📤 to save a `people.json` file with everyone in it.
+**Sharing the family between devices (grown-ups)**
+- On the device that has everyone, open the game with `?export` on the end of
+  the address (for example `https://iannaylor.github.io/Embers-Bus/?export`).
+  It downloads a `people.json` file with everyone in it.
 - Put that file in the game folder (the root of this repository, next to
   `index.html`) and push it. From then on every device loads those people
-  automatically the first time it opens the game.
-- Or tap ✏️ then 📥 on another device and choose the file to load them in.
+  automatically. Nothing to press in the game.
 - Someone you delete on a device stays deleted there, even if they are in the
   shared file.
 
