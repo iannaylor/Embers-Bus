@@ -177,6 +177,17 @@
     renderBusFaces();
   }
 
+  function updateTrayArrows() {
+    const tray = $('#tray');
+    const overflow = tray.scrollWidth > tray.clientWidth + 4 || tray.scrollHeight > tray.clientHeight + 4;
+    $('.tray-wrap').classList.toggle('has-overflow', overflow);
+  }
+  function scrollTray(dir) {
+    const tray = $('#tray');
+    const vertical = tray.scrollHeight > tray.clientHeight + 4;
+    tray.scrollBy({ left: vertical ? 0 : dir * tray.clientWidth * 0.7, top: vertical ? dir * tray.clientHeight * 0.7 : 0, behavior: 'smooth' });
+  }
+
   function renderTray() {
     const tray = $('#tray');
     tray.innerHTML = '';
@@ -186,6 +197,7 @@
       e.className = 'tray-empty';
       e.textContent = Store.people().length === 0 ? 'Nobody here yet' : 'Everyone is aboard 🚌';
       tray.appendChild(e);
+      requestAnimationFrame(updateTrayArrows);
       return;
     }
     people.forEach(p => {
@@ -193,6 +205,7 @@
       makeDraggable(el, { from: 'tray', id: p.id });
       tray.appendChild(el);
     });
+    requestAnimationFrame(updateTrayArrows);
   }
 
   function renderInside() {
@@ -202,6 +215,23 @@
 
   /* ----------------------------------------------------------- dragging */
   const dragLayer = $('#drag-layer');
+
+  /** The seat under the finger, or the nearest one within reach (small fingers wobble). */
+  function seatNear(clientX, clientY) {
+    const under = document.elementFromPoint(clientX, clientY);
+    const direct = under && under.closest('.seat');
+    if (direct) return direct;
+    const p = toLocal(clientX, clientY);
+    let best = null, bestD = 70; // px of forgiveness around a seat
+    $$('.seat').forEach(seat => {
+      const r = localRect(seat);
+      const dx = Math.max(r.left - p.x, 0, p.x - r.right);
+      const dy = Math.max(r.top - p.y, 0, p.y - r.bottom);
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) { bestD = d; best = seat; }
+    });
+    return best;
+  }
 
   function makeDraggable(el, info) {
     el.addEventListener('pointerdown', e => {
@@ -216,7 +246,7 @@
       const move = ev => {
         const dx = ev.clientX - startX, dy = ev.clientY - startY;
         if (!ghost) {
-          if (Math.hypot(dx, dy) < 10) return;
+          if (Math.hypot(dx, dy) < 12) return;
           ghost = el.cloneNode(true);
           ghost.classList.remove('dragging', 'belted');
           dragLayer.appendChild(ghost);
@@ -226,8 +256,7 @@
         const lp = toLocal(ev.clientX, ev.clientY);
         ghost.style.left = lp.x + 'px';
         ghost.style.top = lp.y + 'px';
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
-        const seat = under && under.closest('.seat');
+        const seat = seatNear(ev.clientX, ev.clientY);
         if (seat !== overSeat) {
           if (overSeat) overSeat.classList.remove('over');
           overSeat = seat;
@@ -244,11 +273,14 @@
         ghost.remove();
         el.classList.remove('dragging');
         if (overSeat) overSeat.classList.remove('over');
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
-        const seat = under && under.closest('.seat');
-        if (seat) {
+        const seat = seatNear(ev.clientX, ev.clientY);
+        const travelled = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+        if (seat && info.from === 'seat' && seat.dataset.seat === info.seat) {
+          // Wobbled but ended on the same seat: a short wobble is a tap, otherwise nothing.
+          if (travelled < 40) onTap(el, info);
+        } else if (seat) {
           dropOnSeat(info.id, seat.dataset.seat);
-        } else if (info.from === 'seat') {
+        } else if (info.from === 'seat' && travelled > 60) {
           Store.unseat(info.id);
           Sound.unbelt();
           toast(`${Store.person(info.id).name || 'Friend'} got off the bus`);
@@ -443,6 +475,9 @@
   function bindPersonSheet() {
     bindCropper();
     $('#btn-add').addEventListener('click', () => { Sound.tap(); openPersonSheet(null); });
+    $('#tray-prev').addEventListener('click', () => scrollTray(-1));
+    $('#tray-next').addEventListener('click', () => scrollTray(1));
+    window.addEventListener('resize', () => requestAnimationFrame(updateTrayArrows));
     $('#btn-edit').addEventListener('click', () => {
       Sound.tap();
       const on = inside.classList.toggle('editing');

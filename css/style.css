@@ -622,7 +622,14 @@ button:active { transform: scale(0.94); }
   touch-action: pan-x;
   -webkit-overflow-scrolling: touch;
 }
-.tray .person { flex: 0 0 auto; touch-action: pan-x; }
+.tray .person { flex: 0 0 auto; touch-action: none; } /* any drag on a person lifts them */
+.tray-arrow {
+  display: none; flex: 0 0 auto;
+  width: 40px; height: 64px; border-radius: 12px;
+  background: #ffe08a; color: #3a2f00; font-size: 20px;
+  box-shadow: 0 3px 0 #c9a400;
+}
+.has-overflow .tray-arrow { display: block; }
 .tray-empty { font-size: 16px; color: #7a6a30; align-self: center; padding: 0 8px; }
 .tray-actions { display: flex; flex-direction: column; gap: 8px; }
 .tool.add { background: #7ee787; }
@@ -789,8 +796,12 @@ button:active { transform: scale(0.94); }
     min-height: 0; width: 100%; padding: 4px 0;
     touch-action: pan-y;
   }
-  .tray .person { touch-action: pan-y; }
+  .tray .person { touch-action: none; }
   .tray .person .name { font-size: 11px; }
+  .tray-arrow { width: 64px; height: 30px; }
+  .tray-arrow.prev::before { content: "▲"; } .tray-arrow.next::before { content: "▼"; }
+  .tray-arrow { font-size: 0; }
+  .tray-arrow::before { font-size: 16px; }
   .tray-actions { flex-direction: row; gap: 6px; }
   .tray-actions .tool { width: 40px; height: 40px; font-size: 20px; }
   /* messages sit along the bottom edge inside the bus so they never hide a seat */
