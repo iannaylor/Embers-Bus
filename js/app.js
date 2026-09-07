@@ -1130,8 +1130,8 @@
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
         if (!data) return;
-        const added = Store.mergePeople(data.people || data, false);
-        if (added) renderInside();
+        const added = Store.mergePeople(data.people || data, false, data);
+        if (added) { renderInside(); renderBusFaces(); }
       })
       .catch(() => { /* no shared file yet, that is fine */ });
   }
@@ -1149,15 +1149,41 @@
     bindButtons();
     bindPersonSheet();
     bindOutsideGestures();
-    // Never let the page zoom: iOS ignores the viewport setting for pinches,
-    // so stop multi-finger and Safari "gesture" events at the source.
+    // Never let the page zoom: block every way in that a page is allowed to block.
     const block = e => { e.preventDefault(); };
-    document.addEventListener('gesturestart', block, { passive: false });
-    document.addEventListener('gesturechange', block, { passive: false });
-    document.addEventListener('gestureend', block, { passive: false });
-    document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !e.target.closest('#crop')) e.preventDefault(); }, { passive: false });
+    const inCrop = e => !!(e.target && e.target.closest && e.target.closest('#crop'));
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(n => document.addEventListener(n, block, { passive: false }));
+    document.addEventListener('touchstart', e => { if (e.touches.length > 1 && !inCrop(e)) e.preventDefault(); }, { passive: false });
+    document.addEventListener('touchmove', e => { if ((e.touches.length > 1 || (e.scale && e.scale !== 1)) && !inCrop(e)) e.preventDefault(); }, { passive: false });
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - lastTouchEnd < 320 && !e.target.closest('input')) e.preventDefault(); // double-tap zoom
+      lastTouchEnd = now;
+    }, { passive: false });
     document.addEventListener('dblclick', block, { passive: false });
-    document.addEventListener('wheel', e => { if (e.ctrlKey && !e.target.closest('#crop')) e.preventDefault(); }, { passive: false });
+    document.addEventListener('wheel', e => { if ((e.ctrlKey || e.metaKey) && !inCrop(e)) e.preventDefault(); }, { passive: false });
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0', 'Add', 'Subtract'].includes(e.key)) e.preventDefault();
+    });
+    // And if the browser zooms anyway, undo it: scale the whole game to fit
+    // exactly the part of the page that is visible, so zoom is harmless.
+    const app = $('#app');
+    const fitToVisible = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      if (Math.abs(vv.scale - 1) < 0.005) {
+        app.style.transform = '';
+        return;
+      }
+      app.style.transformOrigin = '0 0';
+      app.style.transform = `translate(${vv.offsetLeft}px, ${vv.offsetTop}px) scale(${1 / vv.scale})`;
+    };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', fitToVisible);
+      window.visualViewport.addEventListener('scroll', fitToVisible);
+      fitToVisible();
+    }
     // unlock audio on the very first touch/click
     const unlock = () => { Sound.unlock(); };
     document.addEventListener('pointerdown', unlock, { once: true });

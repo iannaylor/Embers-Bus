@@ -24,6 +24,7 @@
   };
 
   let state = null;
+  let fresh = false; // true when nothing had been saved on this device yet
 
   function load() {
     try {
@@ -41,6 +42,7 @@
       console.warn('Could not load saved bus', e);
     }
     state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    fresh = true;
     return state;
   }
 
@@ -117,16 +119,23 @@
 
     /** JSON of everyone, for sharing between devices via people.json. */
     exportPeople() {
-      return JSON.stringify({ people: state.people }, null, 1);
+      return JSON.stringify({ people: state.people, seats: state.seats, belts: state.belts }, null, 1);
     },
     /**
      * Add people from a shared list that are not here yet (matched by id).
      * Shared people deleted on this device stay deleted unless `force`.
      * Returns how many were added.
      */
-    mergePeople(list, force) {
+    mergePeople(list, force, layout) {
       if (!Array.isArray(list)) return 0;
       let added = 0;
+      // A brand-new device also takes the shared seating plan.
+      if (fresh && layout && layout.seats && Object.keys(state.seats).length === 0) {
+        state.seats = Object.assign({}, layout.seats);
+        state.belts = Object.assign({}, layout.belts || {});
+        fresh = false;
+        added++;
+      }
       list.forEach(p => {
         if (!p || !p.id || (!p.img && !p.emoji)) return;
         if (state.people.some(q => q.id === p.id)) return;
