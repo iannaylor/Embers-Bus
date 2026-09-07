@@ -197,7 +197,7 @@ button:active { transform: scale(0.94); }
 
 /* Short scenery (phones on their side): make the bus as big as the width allows. */
 @container (max-height: 460px) {
-  #bus-wrap { width: min(84cqw, 165cqh); left: 3%; }
+  #bus-wrap { width: min(84cqw, 190cqh); left: 3%; }
   #bus-wrap.facing-left { left: 13%; }
   .road { height: 26%; }
   .near-pavement { top: 90%; }
