@@ -1284,11 +1284,12 @@
       app.style.transformOrigin = '0 0';
       let base = '';
       if (portrait) {
-        // Size from the real screen: iOS home-screen apps report innerHeight
-        // too small on launch, which left bands of empty space.
+        // Size from what the page actually paints (a 100vh probe), not from
+        // innerHeight, which iOS home-screen apps report short on launch.
         const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
-        const H = Math.max(window.innerHeight, document.documentElement.clientHeight, standalone && screen.height > screen.width ? screen.height : 0);
-        const W = Math.max(window.innerWidth, document.documentElement.clientWidth, standalone && screen.height > screen.width ? screen.width : 0);
+        const probeH = viewportProbe.offsetHeight, probeW = viewportProbe.offsetWidth;
+        const H = Math.max(window.innerHeight, document.documentElement.clientHeight, probeH, standalone && screen.height > screen.width ? screen.height : 0);
+        const W = Math.max(window.innerWidth, document.documentElement.clientWidth, probeW, standalone && screen.height > screen.width ? screen.width : 0);
         app.style.width = H + 'px';
         app.style.height = W + 'px';
         base = 'rotate(90deg) translateY(-100%)';
@@ -1304,8 +1305,15 @@
       app.style.transform = zoom + base;
       if (crossing.active) placeCrossing();
     };
+    // invisible full-viewport element: its size is the truth about the screen
+    const viewportProbe = document.createElement('div');
+    viewportProbe.style.cssText = 'position:fixed;left:0;top:0;width:100vw;height:100vh;width:100lvw;height:100lvh;visibility:hidden;pointer-events:none;z-index:-1;';
+    document.body.appendChild(viewportProbe);
     window.addEventListener('resize', layoutApp);
     window.addEventListener('orientationchange', () => setTimeout(layoutApp, 60));
+    window.addEventListener('pageshow', () => setTimeout(layoutApp, 60));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(layoutApp, 60); });
+    [150, 500, 1500, 3000].forEach(ms => setTimeout(layoutApp, ms)); // iOS settles late on launch
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', layoutApp);
       window.visualViewport.addEventListener('scroll', layoutApp);
