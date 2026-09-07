@@ -633,9 +633,13 @@
       const aislePid = Store.occupant(`r${r}-${sideSeats[1]}`);
       const aisle = aislePid && Store.person(aislePid);
       const window_ = windowPid && Store.person(windowPid);
-      // aisle-seat person sits a little further back, drawn first (behind)
-      if (aisle) g.appendChild(svgFace(aisle, x + (window_ ? 60 : 43), 146, window_ ? 19 : 24, `w${r}b`));
-      if (window_) g.appendChild(svgFace(window_, x + (aisle ? 30 : 43), 149, aisle ? 23 : 25, `w${r}a`));
+      // two people share a window side by side, never overlapping
+      if (window_ && aisle) {
+        g.appendChild(svgFace(window_, x + 22, 148, 20, `w${r}a`));
+        g.appendChild(svgFace(aisle, x + 64, 148, 20, `w${r}b`));
+      } else if (window_ || aisle) {
+        g.appendChild(svgFace(window_ || aisle, x + 43, 148, 25, `w${r}a`));
+      }
       wins.appendChild(g);
     }
     const drv = $('#driver-face');
