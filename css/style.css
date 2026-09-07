@@ -174,8 +174,6 @@ button:active { transform: scale(0.94); }
 #bus-turn { transition: transform 0.36s ease-in; transform-style: preserve-3d; }
 #bus-turn.snap { transition: none; }
 #bus-wrap.facing-left { left: 28%; }
-.door-side-window { display: none; }
-.facing-left .door-side-window { display: block; }
 .facing-left #door, .facing-left #tap-door { display: none; }
 
 #bus-wrap.honk { animation: honk 0.5s; }
@@ -622,6 +620,19 @@ button:active { transform: scale(0.94); }
 .swatch.selected { border-color: #23233a; }
 .swatch.selected::after { content: "✅"; }
 .person-preview { display: flex; justify-content: center; }
+.song-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+.song {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 96px; padding: 10px; border-radius: 20px;
+  background: #fff4c2; color: var(--ui-text);
+  font-size: 40px; line-height: 1;
+  box-shadow: 0 5px 0 #d8c27a, 0 8px 16px rgba(0,0,0,0.18);
+  border: 5px solid transparent;
+}
+.song span { font-size: 16px; }
+.song.playing { border-color: var(--accent); background: #ffe66d; }
+.song.playing::after { content: "▶️ playing"; font-size: 13px; color: #7a5a00; }
+@media (max-width: 420px) { .song-list { grid-template-columns: 1fr; } }
 .name-label { display: flex; flex-direction: column; gap: 6px; font-size: 18px; width: 100%; }
 .name-label input {
   font-family: inherit; font-weight: 700; font-size: 22px;

@@ -21,7 +21,9 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
   pop the mud away and make it sparkle.
 - 🌧️ **Wipers**: rain starts and the windscreen wiper swishes.
 - 💡 **Lights**: night falls and the headlights come on.
-- 🎵 **Music**: "The Wheels on the Bus" plays on a little synth.
+- 🎵 **Music**: pick a song (The Wheels on the Bus, Twinkle Twinkle, Old
+  MacDonald, London Bridge). Each plays on a little synth with a drum beat and
+  bass line.
 - 🎨 **Colour**: choose from twelve bus colours.
 - 🔄 **Turn**: the bus spins round so you can see the people sitting on the
   other side. Facing right you see the door side (the left-hand pair of seats

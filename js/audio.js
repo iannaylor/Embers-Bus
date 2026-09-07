@@ -21,7 +21,7 @@
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = 0.7;
+      master.gain.value = 0.9;
       master.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume();
@@ -90,7 +90,7 @@
 
     setMuted(m) {
       muted = m;
-      if (master) master.gain.value = m ? 0 : 0.7;
+      if (master) master.gain.value = m ? 0 : 0.9;
     },
     isMuted() { return muted; },
 
@@ -230,16 +230,16 @@
       e.osc2.stop(t + 0.7);
     },
 
-    /* --- "The Wheels on the Bus" ---------------------------------- */
-    melodyToggle() {
-      if (melodyPlaying) { Sound.melodyStop(); return false; }
-      Sound.melodyStart();
-      return true;
-    },
+    /* --- music: a choice of songs with a drum beat and bass ------------- */
+    songs() { return SONGS.map(s => ({ id: s.id, name: s.name, emoji: s.emoji })); },
+    currentSong() { return melodyPlaying ? currentSong.id : null; },
     isMelodyPlaying() { return melodyPlaying; },
 
-    melodyStart() {
+    /** Start a song by id (restarts if already playing something). */
+    melodyStart(id) {
       if (!ensure()) return;
+      Sound.melodyStop();
+      currentSong = SONGS.find(s => s.id === id) || SONGS[0];
       melodyPlaying = true;
       scheduleMelody();
     },
@@ -253,29 +253,86 @@
   };
 
   // note name -> frequency
-  const NOTE = { G3: 196.00, A3: 220.00, B3: 246.94, C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25 };
+  const NOTE = {
+    G3: 196.00, A3: 220.00, B3: 246.94, C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23,
+    G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25
+  };
 
-  // [note, beats]
-  const LINE_A = [['G3', 0.5], ['C4', 1], ['C4', 0.5], ['C4', 0.5], ['C4', 1], ['E4', 1], ['G4', 1], ['E4', 0.5], ['C4', 1.5]];
-  const LINE_B = [['D4', 1], ['B3', 1], ['G3', 2]];
-  const LINE_C = [['D4', 1], ['G3', 1], ['B3', 1], ['C4', 2]];
-  const SONG = [].concat(LINE_A, LINE_B, LINE_B, LINE_A, LINE_C);
-  const BEAT = 0.32; // seconds per beat
+  // Each song: notes as [note, beats], beat length in seconds, and a bass root note.
+  const WHEELS_A = [['G3', 0.5], ['C4', 1], ['C4', 0.5], ['C4', 0.5], ['C4', 1], ['E4', 1], ['G4', 1], ['E4', 0.5], ['C4', 1.5]];
+  const WHEELS_B = [['D4', 1], ['B3', 1], ['G3', 2]];
+  const WHEELS_C = [['D4', 1], ['G3', 1], ['B3', 1], ['C4', 2]];
+  const TWINKLE_A = [['C4', 1], ['C4', 1], ['G4', 1], ['G4', 1], ['A4', 1], ['A4', 1], ['G4', 2], ['F4', 1], ['F4', 1], ['E4', 1], ['E4', 1], ['D4', 1], ['D4', 1], ['C4', 2]];
+  const TWINKLE_B = [['G4', 1], ['G4', 1], ['F4', 1], ['F4', 1], ['E4', 1], ['E4', 1], ['D4', 2]];
+  const MAC_A = [['G4', 1], ['G4', 1], ['G4', 1], ['D4', 1], ['E4', 1], ['E4', 1], ['D4', 2], ['B4', 1], ['B4', 1], ['A4', 1], ['A4', 1], ['G4', 2]];
+  const MAC_B = [['D4', 1], ['G4', 1], ['G4', 1], ['G4', 1], ['D4', 1], ['E4', 1], ['E4', 1], ['D4', 2], ['B4', 1], ['B4', 1], ['A4', 1], ['A4', 1], ['G4', 2]];
+  const BRIDGE_A = [['G4', 1.5], ['A4', 0.5], ['G4', 1], ['F4', 1], ['E4', 1], ['F4', 1], ['G4', 2]];
+  const BRIDGE_B = [['D4', 1], ['E4', 1], ['F4', 2], ['E4', 1], ['F4', 1], ['G4', 2]];
+  const BRIDGE_C = [['D4', 2], ['G4', 1], ['E4', 1], ['C4', 2]];
+
+  const SONGS = [
+    { id: 'wheels', name: 'The Wheels on the Bus', emoji: '🚌', beat: 0.4, bass: 'C4',
+      notes: [].concat(WHEELS_A, WHEELS_B, WHEELS_B, WHEELS_A, WHEELS_C) },
+    { id: 'twinkle', name: 'Twinkle Twinkle', emoji: '⭐', beat: 0.42, bass: 'C4',
+      notes: [].concat(TWINKLE_A, TWINKLE_B, TWINKLE_B, TWINKLE_A) },
+    { id: 'macdonald', name: 'Old MacDonald', emoji: '🐮', beat: 0.38, bass: 'G3',
+      notes: [].concat(MAC_A, MAC_B) },
+    { id: 'bridge', name: 'London Bridge', emoji: '🌉', beat: 0.4, bass: 'C4',
+      notes: [].concat(BRIDGE_A, BRIDGE_B, BRIDGE_A, BRIDGE_C) }
+  ];
+  let currentSong = SONGS[0];
+
+  function kick(t) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.18);
+    g.gain.setValueAtTime(0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.3);
+    melodyNodes.push(o);
+  }
+  function snare(t) {
+    noiseBurst(t, 0.16, 0.5, 'bandpass', 1800, 0.8);
+    const o = tone(190, 'triangle', t, 0.12, 0.3);
+    melodyNodes.push(o);
+  }
+  function hihat(t, accent) {
+    noiseBurst(t, accent ? 0.07 : 0.04, accent ? 0.22 : 0.14, 'highpass', 7000, 1);
+  }
 
   function scheduleMelody() {
     if (!melodyPlaying) return;
+    const song = currentSong;
+    const BEAT = song.beat;
     const start = ctx.currentTime + 0.05;
     let t = start;
     melodyNodes = [];
-    SONG.forEach(([n, beats]) => {
+    // lead + a soft octave-down layer
+    song.notes.forEach(([n, beats]) => {
       const dur = beats * BEAT;
-      const osc = tone(NOTE[n], 'triangle', t, dur * 0.9, 0.16, { attack: 0.02 });
-      const osc2 = tone(NOTE[n] / 2, 'sine', t, dur * 0.9, 0.08, { attack: 0.02 });
-      melodyNodes.push(osc, osc2);
+      melodyNodes.push(tone(NOTE[n], 'sawtooth', t, dur * 0.85, 0.42, { attack: 0.02, lowpass: 2200 }));
+      melodyNodes.push(tone(NOTE[n], 'triangle', t, dur * 0.85, 0.3, { attack: 0.02 }));
       t += dur;
     });
+    // drums and bass for the whole length, 4 beats to the bar
+    const totalBeats = song.notes.reduce((a, [, b]) => a + b, 0);
+    const bars = Math.ceil(totalBeats / 4);
+    const bassFreq = NOTE[song.bass] / 2;
+    for (let b = 0; b < bars * 4; b++) {
+      const bt = start + b * BEAT;
+      if (bt >= t) break;
+      if (b % 2 === 0) kick(bt); else snare(bt);
+      hihat(bt, true);
+      hihat(bt + BEAT / 2, false);
+      // bouncy bass: root, fifth
+      const f = (b % 4 === 2) ? bassFreq * 1.5 : bassFreq;
+      melodyNodes.push(tone(f, 'square', bt, BEAT * 0.45, 0.28, { attack: 0.01, lowpass: 500 }));
+    }
     const total = (t - start) * 1000;
-    melodyTimer = setTimeout(scheduleMelody, total + 400);
+    melodyTimer = setTimeout(scheduleMelody, total + 300);
   }
 
   window.Sound = Sound;

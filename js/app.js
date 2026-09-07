@@ -742,10 +742,40 @@
     else { Sound.lightsOff(); toast('Good morning! ☀️'); }
   }
 
+  function buildSongList() {
+    const list = $('#song-list');
+    Sound.songs().forEach(song => {
+      const b = document.createElement('button');
+      b.className = 'song';
+      b.dataset.id = song.id;
+      b.innerHTML = `${song.emoji}<span>${song.name}</span>`;
+      b.addEventListener('click', () => playSong(song.id));
+      list.appendChild(b);
+    });
+  }
+  function refreshSongList() {
+    const cur = Sound.currentSong();
+    $$('.song').forEach(b => b.classList.toggle('playing', b.dataset.id === cur));
+    $('#btn-music').classList.toggle('active', !!cur);
+  }
+  function playSong(id) {
+    Sound.melodyStart(id);
+    const song = Sound.songs().find(s => s.id === id);
+    refreshSongList();
+    toast(`🎵 ${song ? song.name : 'Music'}`);
+  }
+  function stopMusic() {
+    Sound.melodyStop();
+    refreshSongList();
+  }
+  function openMusic() {
+    Sound.tap();
+    refreshSongList();
+    $('#music-sheet').classList.remove('hidden');
+  }
+  /** Keyboard / quick toggle: play the first song, or stop. */
   function toggleMusic() {
-    const on = Sound.melodyToggle();
-    $('#btn-music').classList.toggle('active', on);
-    if (on) toast('🎵 The wheels on the bus go round and round…');
+    if (Sound.isMelodyPlaying()) stopMusic(); else playSong('wheels');
   }
 
   /* ========================================================================
@@ -1000,7 +1030,10 @@
     $('#btn-turn').addEventListener('click', turnAround);
     $('#btn-wipers').addEventListener('click', toggleWipers);
     $('#btn-lights').addEventListener('click', toggleLights);
-    $('#btn-music').addEventListener('click', toggleMusic);
+    $('#btn-music').addEventListener('click', openMusic);
+    $('#btn-music-stop').addEventListener('click', () => { Sound.tap(); stopMusic(); });
+    $('#btn-music-done').addEventListener('click', () => { Sound.tap(); $('#music-sheet').classList.add('hidden'); });
+    $('#music-sheet').addEventListener('click', e => { if (e.target === e.currentTarget) $('#music-sheet').classList.add('hidden'); });
     $('#btn-wash').addEventListener('click', () => { Sound.tap(); setWash(!wash.on); });
     $('#btn-color').addEventListener('click', () => { Sound.tap(); $('#color-sheet').classList.remove('hidden'); });
     $('#btn-color-done').addEventListener('click', () => { Sound.tap(); $('#color-sheet').classList.add('hidden'); });
@@ -1027,7 +1060,7 @@
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         stopDriving(true);
-        if (Sound.isMelodyPlaying()) toggleMusic();
+        stopMusic();
       }
     });
     window.addEventListener('resize', () => {
@@ -1038,6 +1071,7 @@
   function init() {
     Store.load();
     buildSwatches();
+    buildSongList();
     applyColor(Store.state.color);
     buildCabin();
     renderInside();

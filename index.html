@@ -90,8 +90,6 @@
             <line x1="-6" y1="-80" x2="6" y2="-80" stroke="#222" stroke-width="6" stroke-linecap="round"/>
           </g>
 
-          <!-- on the far side there is a window instead of the door -->
-          <rect class="win door-side-window" x="454" y="112" width="68" height="70" rx="10"/>
           <!-- door -->
           <g id="door" class="door">
             <rect class="door-frame" x="452" y="118" width="72" height="150" rx="6"/>
@@ -218,6 +216,17 @@
       <h2>Pick a colour</h2>
       <div id="swatches" class="swatches"></div>
       <button class="big done" id="btn-color-done">✅<span>Done</span></button>
+    </div>
+  </div>
+
+  <div id="music-sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <h2>Pick a song 🎵</h2>
+      <div id="song-list" class="song-list"></div>
+      <div class="sheet-buttons">
+        <button class="big cancel" id="btn-music-stop">🔇<span>Stop music</span></button>
+        <button class="big done" id="btn-music-done">✅<span>Done</span></button>
+      </div>
     </div>
   </div>
 
