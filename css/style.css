@@ -285,7 +285,7 @@ button:active { transform: scale(0.94); }
   pointer-events: auto;
   touch-action: none;
   cursor: grab;
-  z-index: 4;
+  z-index: 12; /* above the toolbars so a waiting person is always touchable */
   transition: filter 0.3s;
 }
 .ped.waiting { animation: bob 1s ease-in-out infinite; }
@@ -303,7 +303,9 @@ button:active { transform: scale(0.94); }
 .toolbar {
   position: absolute; display: flex; gap: 10px;
   z-index: 10;
+  pointer-events: none; /* only the buttons themselves catch touches */
 }
+.toolbar button { pointer-events: auto; }
 .toolbar.side {
   right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
   flex-direction: column;
@@ -449,67 +451,107 @@ button:active { transform: scale(0.94); }
 
 .inside-main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
+/* The cabin is a top-down plan of the bus: windscreen at the top (front),
+   door front-left, driver front-right, pairs of forward-facing seats either
+   side of the aisle, rear window at the bottom. Sizes come from the cabin's
+   height (cqh) and width (cqw) so it fits any screen without scrolling. */
 .cabin {
-  flex: 1; min-height: 0; overflow: auto;
+  flex: 1; min-height: 0; overflow: hidden;
   container-type: size;
+  --seatw: 100px;
   --face: 60px;
-  --face: clamp(34px, 10.5cqh, 64px);
-  padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 10px;
+  --seatw: min(calc(clamp(34px, 9cqh, 64px) * 1.75), calc((100cqw - 104px) / 4.6));
+  --face: min(clamp(34px, 9cqh, 64px), calc(var(--seatw) / 1.5));
+  padding: 8px 8px 12px;
+  display: flex; justify-content: center; align-items: stretch;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0)) ,
     repeating-linear-gradient(90deg, #f3d98d 0 40px, #f0d078 40px 80px);
 }
-.front { display: flex; align-items: flex-end; gap: 14px; padding-left: 4px; height: 18cqh; min-height: 64px; flex: 0 0 auto; }
-.dash {
-  flex: 1; height: 55%; border-radius: 14px 14px 4px 4px;
-  background: #3a3a4a;
-  display: flex; align-items: center; justify-content: center;
+.bus-plan {
+  position: relative;
+  display: flex; flex-direction: column; gap: 1.2cqh;
+  height: 100%;
+  padding: 1cqh 22px 1.2cqh;
+  border-radius: 46px 46px 22px 22px;
+  background: repeating-linear-gradient(90deg, #e9e2cf 0 22px, #ded6c0 22px 44px);
+  border: 10px solid var(--bus-color);
+  box-shadow: 0 0 0 4px #3a2f00, 0 12px 30px rgba(0,0,0,0.25), inset 0 0 0 3px rgba(0,0,0,0.08);
 }
-.dash-screen { width: 60%; height: 50%; border-radius: 6px; background: linear-gradient(90deg, #7cc4f2, #bfe8ff); }
+/* side windows */
+.bus-plan::before, .bus-plan::after {
+  content: ""; position: absolute; top: 16%; bottom: 8%; width: 9px;
+  background: repeating-linear-gradient(180deg, #bfe8ff 0 34px, var(--bus-dark) 34px 44px);
+  border-radius: 4px;
+}
+.bus-plan::before { left: -10px; }
+.bus-plan::after { right: -10px; }
 
-.rows { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.windscreen {
+  flex: 0 0 auto; height: 6cqh; min-height: 18px;
+  border-radius: 30px 30px 6px 6px;
+  background: linear-gradient(180deg, #d9f1ff, #7cc4f2);
+  border: 3px solid #3a2f00;
+}
+.front {
+  flex: 0 0 auto; height: 15cqh; min-height: 56px;
+  display: grid; grid-template-columns: var(--seatw) 1fr var(--seatw);
+  gap: 8px; align-items: stretch;
+}
+.bus-door {
+  border: 3px dashed #3a2f00; border-radius: 8px;
+  background: repeating-linear-gradient(180deg, #d0c090 0 8px, #bca870 8px 16px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(18px, 5cqh, 30px); line-height: 1;
+}
+.dash {
+  border-radius: 8px;
+  background: #3a3a4a;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 6%;
+}
+.rear-window {
+  flex: 0 0 auto; height: 4cqh; min-height: 12px;
+  border-radius: 6px 6px 18px 18px;
+  background: linear-gradient(180deg, #7cc4f2, #d9f1ff);
+  border: 3px solid #3a2f00;
+}
+
+.rows { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 1cqh; }
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr 0.5fr 1fr 1fr;
-  gap: 8px; align-items: stretch; min-height: 0;
+  grid-template-columns: var(--seatw) var(--seatw) calc(var(--seatw) * 0.6) var(--seatw) var(--seatw);
+  gap: 6px; justify-content: center; align-items: stretch; min-height: 0;
 }
-.row .aisle { height: 10px; }
+.row .aisle { border-radius: 4px; }
 
 .seat {
   position: relative;
   height: 100%; min-height: 0;
-  border-radius: 14px;
-  display: flex; align-items: flex-end; justify-content: center;
-  padding-bottom: 3px;
-  background: transparent;
+  display: flex; align-items: center; justify-content: center;
   touch-action: none;
 }
-.seat-back {
-  position: absolute; left: 8%; right: 8%; top: 0; height: 66%;
-  border-radius: 18px 18px 6px 6px;
-  background: linear-gradient(180deg, #4d7cff, #3358c9);
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15);
-  z-index: 0;
+.cushion {
+  position: absolute; inset: 0 0 20% 0;
+  border-radius: 12px 12px 6px 6px;
+  background: linear-gradient(180deg, #5a88ff, #3358c9);
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,0.12);
 }
-.seat-base {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 38%;
-  border-radius: 10px 10px 16px 16px;
-  background: linear-gradient(180deg, #5a88ff, #2f4fb5);
-  box-shadow: 0 5px 0 #1e3480;
-  z-index: 0;
+.headrest {
+  position: absolute; left: 6%; right: 6%; bottom: 0; height: 28%;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2f4fb5, #1e3480);
+  box-shadow: 0 3px 0 #14245c;
 }
-.seat .person { z-index: 1; width: 100%; max-width: calc(var(--face) * 1.6); }
-.seat.over .seat-back, .seat.over .seat-base { filter: brightness(1.3); }
-.seat.over { outline: 4px dashed #ff7a1a; outline-offset: 2px; }
-.seat.driver { width: calc(var(--face) * 1.9); height: 100%; }
-.seat.driver .seat-back { background: linear-gradient(180deg, #7a7a8a, #4a4a5a); }
-.seat.driver .seat-base { background: linear-gradient(180deg, #6a6a7a, #3a3a4a); box-shadow: 0 5px 0 #222; }
-.wheel-icon {
-  position: absolute; right: -40px; top: 6px;
-  width: 44px; height: 44px; border-radius: 50%;
-  border: 8px solid #222; background: radial-gradient(circle, #555 30%, transparent 32%);
-  z-index: 2;
+.seat .person { z-index: 1; width: 100%; max-width: calc(var(--face) * 1.5); }
+.seat.over .cushion, .seat.over .headrest { filter: brightness(1.35); }
+.seat.over { outline: 4px dashed #ff7a1a; outline-offset: 2px; border-radius: 12px; }
+.seat.driver .cushion { background: linear-gradient(180deg, #7a7a8a, #4a4a5a); }
+.seat.driver .headrest { background: linear-gradient(180deg, #3a3a4a, #222); box-shadow: 0 3px 0 #111; }
+.steering {
+  height: 62%; aspect-ratio: 1; border-radius: 50%;
+  border: 5px solid #111; background: radial-gradient(circle, #777 28%, #3a3a4a 30%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 /* tray */
@@ -571,6 +613,23 @@ button:active { transform: scale(0.94); }
 }
 .name-label input:focus { outline: none; border-color: var(--accent); }
 .sheet-buttons { display: flex; gap: 12px; }
+.crop {
+  position: relative;
+  width: min(260px, 70vw, 42vh); aspect-ratio: 1;
+  border-radius: 18px; overflow: hidden;
+  touch-action: none; cursor: grab;
+  background: #ffe0c2;
+}
+.crop canvas { width: 100%; height: 100%; display: block; }
+.crop-mask {
+  position: absolute; inset: 0; border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(255, 255, 255, 0.78), inset 0 0 0 4px #fff;
+  pointer-events: none;
+}
+.crop-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.crop-hint { font-size: 15px; color: #6a5a20; text-align: center; }
+.zoom-row { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 24px; }
+.zoom-row input[type="range"] { flex: 1; height: 40px; accent-color: var(--accent); }
 
 /* ============================================================ small screens */
 @media (max-height: 520px) {
@@ -581,10 +640,10 @@ button:active { transform: scale(0.94); }
   .inside-header { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 4px; }
   .inside-title { font-size: 20px; }
   .seat .name { display: none; }
-  .cabin { padding: 6px 10px; gap: 6px; }
-  .rows { gap: 5px; }
-  .row { gap: 6px; }
-  .front { min-height: 52px; }
+  .cabin { padding: 6px 8px 8px; }
+  .bus-plan { padding-left: 14px; padding-right: 14px; border-width: 7px; }
+  .row { gap: 4px; }
+  .front { min-height: 48px; }
 }
 /* Short landscape screens (phones on their side): tray goes down the right edge. */
 @media (max-height: 520px) and (orientation: landscape) {
@@ -605,10 +664,8 @@ button:active { transform: scale(0.94); }
   .tray-actions { flex-direction: row; }
 }
 @media (max-width: 640px) {
-  .row { gap: 5px; }
-  .rows { gap: 6px; }
-  .cabin { --face: clamp(34px, 10cqh, 54px); padding: 8px; }
+  .row { gap: 4px; }
+  .bus-plan { padding-left: 12px; padding-right: 12px; border-width: 7px; border-radius: 34px 34px 18px 18px; }
   .big { min-width: 74px; padding: 6px 8px; }
   .swatches { grid-template-columns: repeat(3, 1fr); }
-  .wheel-icon { right: -34px; width: 34px; height: 34px; border-width: 6px; }
 }

@@ -25,16 +25,18 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 - 🎨 **Colour**: choose from twelve bus colours.
 
 **Inside the bus**
-- Drag a person from the tray at the bottom onto any seat (including the
-  driver's seat!).
+- A top-down plan of the bus: door at the front left, driver at the front
+  right, and four rows of two-plus-two seats. Drag a person from the tray onto
+  any seat (including the driver's seat!).
 - Tap a seated person to click the seat belt on. Tap again to take it off.
 - Drag a person off a seat to let them off the bus.
 - Close the door to go back outside. The people you seated appear in the bus
   windows.
 
 **Adding people**
-- Inside the bus tap ➕, choose a photo (a face works best, it is cropped to a
-  circle), type a name, and Save. The photo is shrunk and kept only in the
+- Inside the bus tap ➕ and choose a photo. Drag the photo so the face sits in
+  the circle, and pinch (or use the slider, or the mouse wheel) to zoom in on
+  it. Type a name and Save. Only the small circle you chose is kept, in the
   browser on that device. Nothing is uploaded anywhere.
 - Tap ✏️ to edit or remove people.
 

@@ -129,7 +129,7 @@
         const seat = document.createElement('div');
         seat.className = 'seat empty';
         seat.dataset.seat = `r${r}-${l}`;
-        seat.innerHTML = '<div class="seat-back"></div><div class="seat-base"></div>';
+        seat.innerHTML = '<div class="cushion"></div><div class="headrest"></div>';
         row.appendChild(seat);
       });
       rows.appendChild(row);
@@ -272,11 +272,126 @@
 
   /* ---------------------------------------------------- add / edit people */
   let sheetPersonId = null; // null = adding
-  let pendingImg = null;
+  let pendingImg = null;    // data URL once a crop has been made
+
+  /* --- photo cropper: drag to move, pinch / wheel / slider to zoom ------ */
+  const crop = { img: null, zoom: 1, ox: 0, oy: 0, pointers: new Map() };
+  const cropEl = $('#crop');
+  const cropCanvas = $('#crop-canvas');
+  const cropZoom = $('#crop-zoom');
+
+  function cropGeom() {
+    const V = cropCanvas.clientWidth;
+    const w = crop.img.naturalWidth, h = crop.img.naturalHeight;
+    const s = (V / Math.min(w, h)) * crop.zoom; // zoom 1 = photo just covers the circle
+    return { V, w, h, s };
+  }
+  function cropClamp() {
+    const { V, w, h, s } = cropGeom();
+    const mx = Math.max(0, (w * s - V) / 2), my = Math.max(0, (h * s - V) / 2);
+    crop.ox = clamp(crop.ox, -mx, mx);
+    crop.oy = clamp(crop.oy, -my, my);
+  }
+  function cropDraw() {
+    if (!crop.img) return;
+    const { V, w, h, s } = cropGeom();
+    const dpr = window.devicePixelRatio || 1;
+    if (cropCanvas.width !== Math.round(V * dpr)) {
+      cropCanvas.width = cropCanvas.height = Math.round(V * dpr);
+    }
+    const g = cropCanvas.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = '#ffe0c2';
+    g.fillRect(0, 0, V, V);
+    g.drawImage(crop.img, V / 2 - (w * s) / 2 + crop.ox, V / 2 - (h * s) / 2 + crop.oy, w * s, h * s);
+  }
+  /** Zoom to z keeping the photo point under (cx, cy) (relative to the centre) still. */
+  function cropSetZoom(z, cx, cy) {
+    const before = cropGeom().s;
+    crop.zoom = clamp(z, 1, 5);
+    const k = cropGeom().s / before;
+    crop.ox = cx - (cx - crop.ox) * k;
+    crop.oy = cy - (cy - crop.oy) * k;
+    cropClamp();
+    cropDraw();
+    cropZoom.value = crop.zoom;
+  }
+  function cropStart(img) {
+    cropReset();
+    crop.img = img;
+    crop.zoom = 1; crop.ox = 0; crop.oy = 0;
+    cropZoom.value = 1;
+    $('#preview-face').classList.add('hidden');
+    cropEl.classList.remove('hidden');
+    $('#crop-controls').classList.remove('hidden');
+    cropDraw();
+  }
+  function cropReset() {
+    if (crop.img) { URL.revokeObjectURL(crop.img.src); crop.img = null; }
+    crop.pointers.clear();
+    cropEl.classList.add('hidden');
+    $('#crop-controls').classList.add('hidden');
+    $('#preview-face').classList.remove('hidden');
+  }
+  function cropResult() {
+    const { V, w, h, s } = cropGeom();
+    const side = V / s;
+    const sx = (w - side) / 2 - crop.ox / s;
+    const sy = (h - side) / 2 - crop.oy / s;
+    return Store.cropFace(crop.img, sx, sy, side);
+  }
+  function bindCropper() {
+    const rel = e => {
+      const r = cropCanvas.getBoundingClientRect();
+      return { x: e.clientX - r.left - r.width / 2, y: e.clientY - r.top - r.height / 2 };
+    };
+    cropEl.addEventListener('pointerdown', e => {
+      if (!crop.img) return;
+      e.preventDefault();
+      try { cropEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      crop.pointers.set(e.pointerId, rel(e));
+    });
+    cropEl.addEventListener('pointermove', e => {
+      if (!crop.img || !crop.pointers.has(e.pointerId)) return;
+      const now = rel(e);
+      const pts = Array.from(crop.pointers.entries());
+      if (pts.length === 1) {
+        const prev = pts[0][1];
+        crop.ox += now.x - prev.x;
+        crop.oy += now.y - prev.y;
+        crop.pointers.set(e.pointerId, now);
+        cropClamp();
+        cropDraw();
+      } else {
+        const other = pts.find(([id]) => id !== e.pointerId)[1];
+        const prev = crop.pointers.get(e.pointerId);
+        const midBefore = { x: (prev.x + other.x) / 2, y: (prev.y + other.y) / 2 };
+        const midAfter = { x: (now.x + other.x) / 2, y: (now.y + other.y) / 2 };
+        const dBefore = Math.hypot(prev.x - other.x, prev.y - other.y) || 1;
+        const dAfter = Math.hypot(now.x - other.x, now.y - other.y) || 1;
+        crop.ox += midAfter.x - midBefore.x;
+        crop.oy += midAfter.y - midBefore.y;
+        crop.pointers.set(e.pointerId, now);
+        cropSetZoom(crop.zoom * (dAfter / dBefore), midAfter.x, midAfter.y);
+      }
+    });
+    const end = e => { crop.pointers.delete(e.pointerId); };
+    cropEl.addEventListener('pointerup', end);
+    cropEl.addEventListener('pointercancel', end);
+    cropEl.addEventListener('wheel', e => {
+      if (!crop.img) return;
+      e.preventDefault();
+      const p = rel(e);
+      cropSetZoom(crop.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08), p.x, p.y);
+    }, { passive: false });
+    cropZoom.addEventListener('input', () => cropSetZoom(parseFloat(cropZoom.value), 0, 0));
+    window.addEventListener('resize', cropDraw);
+  }
 
   function openPersonSheet(id) {
     sheetPersonId = id || null;
     pendingImg = null;
+    cropReset();
     const p = id ? Store.person(id) : null;
     $('#person-sheet-title').textContent = p ? 'Edit ' + (p.name || 'person') : 'Add a person';
     $('#name-input').value = p ? (p.name || '') : '';
@@ -293,11 +408,13 @@
   }
 
   function closePersonSheet() {
+    cropReset();
     $('#person-sheet').classList.add('hidden');
     $('#name-input').blur();
   }
 
   function bindPersonSheet() {
+    bindCropper();
     $('#btn-add').addEventListener('click', () => { Sound.tap(); openPersonSheet(null); });
     $('#btn-edit').addEventListener('click', () => {
       Sound.tap();
@@ -311,10 +428,8 @@
       e.target.value = '';
       if (!file) return;
       try {
-        pendingImg = await Store.fileToFace(file);
-        const preview = $('#preview-face');
-        preview.innerHTML = '';
-        preview.style.backgroundImage = `url("${pendingImg}")`;
+        const img = await Store.loadImage(file);
+        cropStart(img);
         Sound.pop();
       } catch (err) {
         toast('Sorry, that picture did not work');
@@ -323,6 +438,9 @@
     $('#btn-person-cancel').addEventListener('click', () => { Sound.tap(); closePersonSheet(); });
     $('#btn-person-save').addEventListener('click', () => {
       const name = $('#name-input').value.trim().slice(0, 16);
+      if (crop.img) {
+        try { pendingImg = cropResult(); } catch (err) { toast('Sorry, that picture did not work'); return; }
+      }
       if (sheetPersonId) {
         const changes = { name };
         if (pendingImg) { changes.img = pendingImg; changes.emoji = undefined; }
@@ -348,7 +466,6 @@
         renderInside();
       }
     });
-    // delete from the edit sheet is not needed: tray ✖ does it.
     $('#person-sheet').addEventListener('click', e => { if (e.target === e.currentTarget) closePersonSheet(); });
   }
 

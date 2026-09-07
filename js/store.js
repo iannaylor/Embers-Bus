@@ -62,37 +62,34 @@
     return BODY_COLORS[h % BODY_COLORS.length];
   }
 
-  /**
-   * Turn a chosen photo into a small square JPEG data URL (centre-cropped).
-   */
-  function fileToFace(file) {
+  /** Load a chosen photo into an <img>. Caller revokes img.src (an object URL) when done. */
+  function loadImage(file) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
-      img.onload = () => {
-        try {
-          const side = Math.min(img.naturalWidth, img.naturalHeight);
-          const sx = (img.naturalWidth - side) / 2;
-          const sy = (img.naturalHeight - side) / 2;
-          const canvas = document.createElement('canvas');
-          canvas.width = FACE_SIZE;
-          canvas.height = FACE_SIZE;
-          const g = canvas.getContext('2d');
-          g.drawImage(img, sx, sy, side, side, 0, 0, FACE_SIZE, FACE_SIZE);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
-        } catch (e) {
-          reject(e);
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      };
+      img.onload = () => resolve(img);
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read that picture')); };
       img.src = url;
     });
   }
 
+  /**
+   * Cut a square (sx, sy, side in image pixels) out of an image and return a
+   * small JPEG data URL for the face.
+   */
+  function cropFace(img, sx, sy, side) {
+    const canvas = document.createElement('canvas');
+    canvas.width = FACE_SIZE;
+    canvas.height = FACE_SIZE;
+    const g = canvas.getContext('2d');
+    g.fillStyle = '#ffe0c2';
+    g.fillRect(0, 0, FACE_SIZE, FACE_SIZE);
+    g.drawImage(img, sx, sy, side, side, 0, 0, FACE_SIZE, FACE_SIZE);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }
+
   window.Store = {
-    load, save, uid, bodyColor, fileToFace,
+    load, save, uid, bodyColor, loadImage, cropFace,
     get state() { return state; },
 
     people() { return state.people; },
