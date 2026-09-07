@@ -24,6 +24,38 @@
     return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
   }
 
+  /* --- speech: every message is read aloud with the device's own voice --- */
+  const speech = { voice: null };
+  function pickVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const vs = speechSynthesis.getVoices();
+    speech.voice =
+      vs.find(v => /en[-_]GB/i.test(v.lang) && /female|kate|serena|martha|stephanie|google uk english female/i.test(v.name)) ||
+      vs.find(v => /en[-_]GB/i.test(v.lang)) ||
+      vs.find(v => /^en/i.test(v.lang)) || null;
+  }
+  if ('speechSynthesis' in window) {
+    speechSynthesis.addEventListener('voiceschanged', pickVoice);
+    pickVoice();
+  }
+  function speak(text) {
+    if (!('speechSynthesis' in window)) return;
+    const clean = String(text)
+      .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
+      .replace(/…/g, '.')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!clean) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      if (speech.voice) u.voice = speech.voice;
+      u.rate = 1;
+      u.pitch = 1.05;
+      speechSynthesis.speak(u);
+    } catch (e) { /* no speech on this device */ }
+  }
+
   let toastTimer = null;
   function toast(msg, ms) {
     const el = $('#toast');
@@ -31,6 +63,7 @@
     el.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), ms || 2200);
+    speak(msg);
   }
 
   const outside = $('#outside');
