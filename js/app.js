@@ -1232,17 +1232,23 @@
       .catch(() => { /* no shared file yet, that is fine */ });
   }
 
-  /** Grown-ups: open the game with ?sound on the address to see the audio state. */
+  /** Installed on the home screen (any display mode that is not the plain browser). */
+  function isInstalled() {
+    return !!window.navigator.standalone || !matchMedia('(display-mode: browser)').matches;
+  }
+
+  /** Grown-ups: open the game with ?sound or ?debug on the address to see what the phone reports. */
   let badge = null;
   function soundBadge() {
-    if (!/[?&]sound\b/.test(location.search)) return;
+    if (!/[?&](sound|debug)\b/.test(location.search)) return;
     if (!badge) {
       badge = document.createElement('div');
       badge.style.cssText = 'position:absolute;left:8px;top:8px;z-index:999;background:#000;color:#0f0;font:bold 14px monospace;padding:6px 10px;border-radius:8px;pointer-events:none;';
       app.appendChild(badge);
     }
-    const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
-    badge.textContent = `audio: ${Sound.state()} · ${standalone ? 'home screen' : 'browser'}`;
+    const mode = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find(m => matchMedia(`(display-mode: ${m})`).matches) || '?';
+    const r = app.getBoundingClientRect();
+    badge.textContent = `audio ${Sound.state()} · ${mode}${window.navigator.standalone ? '+apple' : ''} · inner ${window.innerWidth}x${window.innerHeight} · client ${document.documentElement.clientWidth}x${document.documentElement.clientHeight} · screen ${screen.width}x${screen.height} · app ${Math.round(r.width)}x${Math.round(r.height)} @${Math.round(r.left)},${Math.round(r.top)}`;
   }
 
   function init() {
@@ -1286,7 +1292,7 @@
       if (portrait) {
         // Size from what the page actually paints (a 100vh probe), not from
         // innerHeight, which iOS home-screen apps report short on launch.
-        const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+        const standalone = isInstalled();
         const probeH = viewportProbe.offsetHeight, probeW = viewportProbe.offsetWidth;
         const H = Math.max(window.innerHeight, document.documentElement.clientHeight, probeH, standalone && screen.height > screen.width ? screen.height : 0);
         const W = Math.max(window.innerWidth, document.documentElement.clientWidth, probeW, standalone && screen.height > screen.width ? screen.width : 0);
@@ -1304,6 +1310,7 @@
       }
       app.style.transform = zoom + base;
       if (crossing.active) placeCrossing();
+      soundBadge();
     };
     // invisible full-viewport element: its size is the truth about the screen
     const viewportProbe = document.createElement('div');

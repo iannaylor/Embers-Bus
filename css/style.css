@@ -121,7 +121,7 @@ button:active { transform: scale(0.94); }
 .clouds {
   top: 5%; height: 30%;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='200' viewBox='0 0 600 200'><g fill='white' opacity='0.92'><ellipse cx='90' cy='80' rx='60' ry='30'/><ellipse cx='130' cy='65' rx='45' ry='32'/><ellipse cx='60' cy='70' rx='35' ry='25'/><ellipse cx='400' cy='140' rx='70' ry='32'/><ellipse cx='440' cy='120' rx='50' ry='35'/><ellipse cx='360' cy='130' rx='40' ry='26'/></g></svg>");
-  background-size: 600px 200px;
+  background-size: auto 100%;
   opacity: 0.95;
 }
 .night .clouds { opacity: 0.35; }
@@ -129,7 +129,7 @@ button:active { transform: scale(0.94); }
 .hills {
   top: 38%; height: 22%;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='200' viewBox='0 0 800 200'><path d='M0 200 V120 Q100 40 200 110 Q300 160 400 80 Q500 10 600 100 Q700 160 800 90 V200 Z' fill='%2394d977'/><path d='M0 200 V150 Q150 90 300 150 Q450 190 600 130 Q700 100 800 150 V200 Z' fill='%237ccf5a'/></svg>");
-  background-size: 800px 200px;
+  background-size: auto 100%;
   background-position-y: bottom;
 }
 .night .hills { filter: brightness(0.45); }
@@ -137,7 +137,7 @@ button:active { transform: scale(0.94); }
 .houses {
   top: 40%; height: 20%;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='200' viewBox='0 0 900 200'><g><rect x='40' y='110' width='90' height='90' fill='%23ffb7c5'/><path d='M30 112 L85 60 L140 112 Z' fill='%23d94f6a'/><rect x='70' y='150' width='28' height='50' fill='%236b3e26'/><rect x='48' y='125' width='20' height='20' fill='%23bfe8ff'/><rect x='102' y='125' width='20' height='20' fill='%23bfe8ff'/></g><g><rect x='230' y='150' width='14' height='50' fill='%238a5a2b'/><circle cx='237' cy='125' r='40' fill='%233fa34d'/><circle cx='215' cy='140' r='26' fill='%2352b85e'/><circle cx='260' cy='140' r='26' fill='%2352b85e'/></g><g><rect x='360' y='100' width='110' height='100' fill='%23ffe08a'/><path d='M350 102 L415 50 L480 102 Z' fill='%23e06b2d'/><rect x='400' y='150' width='30' height='50' fill='%236b3e26'/><rect x='372' y='118' width='22' height='22' fill='%23bfe8ff'/><rect x='438' y='118' width='22' height='22' fill='%23bfe8ff'/></g><g><rect x='580' y='150' width='14' height='50' fill='%238a5a2b'/><circle cx='587' cy='120' r='44' fill='%2345a049'/><circle cx='560' cy='140' r='26' fill='%2352b85e'/><circle cx='614' cy='140' r='26' fill='%2352b85e'/></g><g><rect x='700' y='120' width='100' height='80' fill='%23b7d8ff'/><path d='M690 122 L750 70 L810 122 Z' fill='%234a6fd9'/><rect x='735' y='150' width='28' height='50' fill='%236b3e26'/><rect x='708' y='132' width='20' height='20' fill='%23fff8c9'/><rect x='770' y='132' width='20' height='20' fill='%23fff8c9'/></g></svg>");
-  background-size: 900px 200px;
+  background-size: auto 100%;
   background-position-y: bottom;
 }
 .night .houses { filter: brightness(0.5); }
