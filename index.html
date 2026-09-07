@@ -172,7 +172,16 @@
       <button class="big horn" id="btn-horn">📣<span>Horn</span></button>
       <button class="big door" id="btn-door">🚪<span>Open</span></button>
       <button class="big go" id="btn-go">▶️<span>Go!</span></button>
-      <button class="big stop" id="btn-busstop">🚏<span>Bus stop</span></button>
+      <button class="big stop" id="btn-busstop" aria-label="Bus stop">
+        <svg class="icon-crossing" viewBox="0 0 44 44" aria-hidden="true">
+          <rect x="2" y="6" width="40" height="32" rx="7" fill="#3a3a4a"/>
+          <rect x="7" y="10" width="5" height="24" rx="1.5" fill="#fff"/>
+          <rect x="16" y="10" width="5" height="24" rx="1.5" fill="#fff"/>
+          <rect x="25" y="10" width="5" height="24" rx="1.5" fill="#fff"/>
+          <rect x="34" y="10" width="5" height="24" rx="1.5" fill="#fff"/>
+        </svg>
+        <span>Bus stop</span>
+      </button>
       <button class="big turn" id="btn-turn">🔄<span>Turn</span></button>
     </div>
   </section>

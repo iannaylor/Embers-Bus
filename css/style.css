@@ -385,6 +385,7 @@ button:active { transform: scale(0.94); }
   box-shadow: 0 5px 0 #b9b9c8, 0 8px 16px rgba(0,0,0,0.22);
 }
 .big span { font-size: 15px; margin-top: 4px; }
+.big .icon-crossing { width: 1.15em; height: 1.15em; display: block; }
 .big.horn { background: #ffd84a; box-shadow: 0 5px 0 #c9a400, 0 8px 16px rgba(0,0,0,0.22); }
 .big.door { background: #8ee0ff; box-shadow: 0 5px 0 #3fa6cc, 0 8px 16px rgba(0,0,0,0.22); }
 .big.go { background: #7ee787; box-shadow: 0 5px 0 #2e9e3c, 0 8px 16px rgba(0,0,0,0.22); }
