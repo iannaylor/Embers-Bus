@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ember's Bus">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffcc00">
+<title>Ember's Bus</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ======================= OUTSIDE SCENE ======================= -->
+  <section id="outside" class="scene active" aria-label="Outside the bus">
+    <div class="sky">
+      <div class="sun"></div>
+      <div class="moon"></div>
+      <div class="stars"></div>
+      <div class="layer clouds"></div>
+    </div>
+    <div class="layer hills"></div>
+    <div class="layer houses"></div>
+    <div class="far-pavement"></div>
+    <div class="road">
+      <div class="layer road-lines"></div>
+      <div id="crossing" class="crossing hidden"></div>
+    </div>
+    <div class="near-pavement"></div>
+
+    <div id="bus-wrap">
+      <svg id="bus" viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-label="The bus">
+        <defs>
+          <clipPath id="clip-door"><rect x="452" y="118" width="72" height="150" rx="6"/></clipPath>
+          <clipPath id="clip-screen"><path d="M536 100 h48 a16 16 0 0 1 16 16 v96 h-64 z"/></clipPath>
+          <clipPath id="clip-win1"><rect x="70" y="112" width="86" height="70" rx="10"/></clipPath>
+          <clipPath id="clip-win2"><rect x="166" y="112" width="86" height="70" rx="10"/></clipPath>
+          <clipPath id="clip-win3"><rect x="262" y="112" width="86" height="70" rx="10"/></clipPath>
+          <clipPath id="clip-win4"><rect x="358" y="112" width="86" height="70" rx="10"/></clipPath>
+          <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#bfe8ff"/><stop offset="1" stop-color="#7cc4f2"/>
+          </linearGradient>
+          <radialGradient id="beam" cx="0" cy="0.5" r="1">
+            <stop offset="0" stop-color="#fff7b0" stop-opacity="0.9"/><stop offset="1" stop-color="#fff7b0" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <ellipse class="shadow" cx="330" cy="318" rx="290" ry="12" fill="rgba(0,0,0,0.25)"/>
+
+        <!-- headlight beam (only shown when lights on) -->
+        <path id="beam" class="beam" d="M600 205 L900 150 L900 300 Z" fill="url(#beam)"/>
+
+        <!-- body -->
+        <g id="body-group">
+          <path class="bus-body" d="M40 90 Q40 60 70 60 H560 Q600 60 600 100 V250 Q600 270 580 270 H60 Q40 270 40 250 Z"/>
+          <path class="bus-skirt" d="M40 232 H600 V250 Q600 270 580 270 H60 Q40 270 40 250 Z"/>
+          <rect class="bus-stripe" x="40" y="196" width="560" height="10"/>
+          <rect class="bus-roof" x="70" y="56" width="500" height="10" rx="5"/>
+
+          <!-- side windows -->
+          <g class="windows">
+            <rect class="win" x="70" y="112" width="86" height="70" rx="10"/>
+            <rect class="win" x="166" y="112" width="86" height="70" rx="10"/>
+            <rect class="win" x="262" y="112" width="86" height="70" rx="10"/>
+            <rect class="win" x="358" y="112" width="86" height="70" rx="10"/>
+          </g>
+          <!-- faces in the windows (filled by JS) -->
+          <g id="win-faces"></g>
+          <g class="window-shine">
+            <rect x="70" y="112" width="86" height="70" rx="10"/>
+            <rect x="166" y="112" width="86" height="70" rx="10"/>
+            <rect x="262" y="112" width="86" height="70" rx="10"/>
+            <rect x="358" y="112" width="86" height="70" rx="10"/>
+          </g>
+
+          <!-- windscreen + driver -->
+          <path class="win" d="M536 100 h48 a16 16 0 0 1 16 16 v96 h-64 z"/>
+          <g id="driver-face"></g>
+          <!-- wiper -->
+          <g id="wiper" class="wiper" transform="translate(556 208)">
+            <line x1="0" y1="0" x2="0" y2="-80" stroke="#222" stroke-width="5" stroke-linecap="round"/>
+            <line x1="-6" y1="-80" x2="6" y2="-80" stroke="#222" stroke-width="6" stroke-linecap="round"/>
+          </g>
+
+          <!-- door -->
+          <g id="door" class="door">
+            <rect class="door-frame" x="452" y="118" width="72" height="150" rx="6"/>
+            <g class="door-inside">
+              <rect x="452" y="118" width="72" height="150" fill="#2b2b3b"/>
+              <rect x="456" y="236" width="64" height="10" fill="#555"/>
+              <rect x="456" y="250" width="64" height="10" fill="#666"/>
+            </g>
+            <g clip-path="url(#clip-door)">
+              <g class="door-panel left">
+                <rect x="452" y="118" width="36" height="150" class="door-fill"/>
+                <rect x="458" y="124" width="24" height="60" rx="6" class="win"/>
+              </g>
+              <g class="door-panel right">
+                <rect x="488" y="118" width="36" height="150" class="door-fill"/>
+                <rect x="494" y="124" width="24" height="60" rx="6" class="win"/>
+              </g>
+            </g>
+            <rect class="door-outline" x="452" y="118" width="72" height="150" rx="6"/>
+          </g>
+
+          <!-- lights -->
+          <rect id="headlight" class="headlight" x="586" y="200" width="14" height="22" rx="4"/>
+          <rect class="taillight" x="40" y="200" width="12" height="22" rx="4"/>
+          <rect class="bumper" x="34" y="258" width="572" height="14" rx="6"/>
+
+          <!-- destination sign -->
+          <rect class="sign" x="90" y="72" width="190" height="26" rx="6"/>
+          <text id="sign-text" class="sign-text" x="185" y="91" text-anchor="middle">EMBER'S BUS</text>
+
+          <!-- dirt (added by JS while driving) -->
+          <g id="dirt"></g>
+        </g>
+
+        <!-- wheels -->
+        <g class="wheel" transform="translate(150 270)">
+          <circle r="42" fill="#222"/>
+          <g class="wheel-spin">
+            <circle r="24" fill="#bbb"/>
+            <circle r="8" fill="#555"/>
+            <rect x="-3" y="-24" width="6" height="48" fill="#777"/>
+            <rect x="-24" y="-3" width="48" height="6" fill="#777"/>
+          </g>
+        </g>
+        <g class="wheel" transform="translate(500 270)">
+          <circle r="42" fill="#222"/>
+          <g class="wheel-spin">
+            <circle r="24" fill="#bbb"/>
+            <circle r="8" fill="#555"/>
+            <rect x="-3" y="-24" width="6" height="48" fill="#777"/>
+            <rect x="-24" y="-3" width="48" height="6" fill="#777"/>
+          </g>
+        </g>
+
+        <!-- big invisible tap targets -->
+        <rect id="tap-door" x="446" y="110" width="84" height="165" fill="transparent"/>
+        <rect id="tap-horn" x="60" y="60" width="380" height="45" fill="transparent"/>
+      </svg>
+      <div id="sparkles" class="sparkles"></div>
+    </div>
+
+    <div id="rain" class="rain hidden"></div>
+    <div id="peds" class="peds"></div>
+    <div id="bubbles" class="bubbles"></div>
+    <div id="sponge" class="sponge hidden">🧽</div>
+
+    <div class="toolbar side">
+      <button class="tool" id="btn-color" data-label="Colour">🎨</button>
+      <button class="tool" id="btn-wash" data-label="Wash">🧽</button>
+      <button class="tool" id="btn-wipers" data-label="Wipers">🌧️</button>
+      <button class="tool" id="btn-lights" data-label="Lights">💡</button>
+      <button class="tool" id="btn-music" data-label="Music">🎵</button>
+    </div>
+
+    <div class="toolbar bottom">
+      <button class="big horn" id="btn-horn">📣<span>Horn</span></button>
+      <button class="big door" id="btn-door">🚪<span>Open</span></button>
+      <button class="big go" id="btn-go">▶️<span>Go!</span></button>
+      <button class="big stop" id="btn-busstop">🚏<span>Bus stop</span></button>
+    </div>
+  </section>
+
+  <!-- ======================= INSIDE SCENE ======================= -->
+  <section id="inside" class="scene" aria-label="Inside the bus">
+    <header class="inside-header">
+      <div class="inside-title">All aboard! 🚌</div>
+      <button class="big close" id="btn-close">🚪<span>Close door</span></button>
+    </header>
+
+    <div class="inside-main">
+    <div id="cabin" class="cabin">
+      <div class="front">
+        <div class="seat driver" data-seat="driver">
+          <div class="wheel-icon"></div>
+          <div class="seat-back"></div>
+          <div class="seat-base"></div>
+        </div>
+        <div class="dash">
+          <div class="dash-screen"></div>
+        </div>
+      </div>
+      <div id="rows" class="rows"></div>
+    </div>
+
+    <div class="tray-wrap">
+      <div id="tray" class="tray"></div>
+      <div class="tray-actions">
+        <button class="tool add" id="btn-add" data-label="Add a person">➕</button>
+        <button class="tool edit" id="btn-edit" data-label="Edit people">✏️</button>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ======================= SHEETS ======================= -->
+  <div id="color-sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <h2>Pick a colour</h2>
+      <div id="swatches" class="swatches"></div>
+      <button class="big done" id="btn-color-done">✅<span>Done</span></button>
+    </div>
+  </div>
+
+  <div id="person-sheet" class="sheet hidden">
+    <div class="sheet-card">
+      <h2 id="person-sheet-title">Add a person</h2>
+      <div class="person-preview">
+        <div id="preview-face" class="face big-face"><span class="emoji">🙂</span></div>
+      </div>
+      <button class="big photo" id="btn-photo">📷<span>Choose a photo</span></button>
+      <input type="file" id="file-input" accept="image/*" hidden>
+      <label class="name-label">Name
+        <input type="text" id="name-input" maxlength="16" placeholder="Who is it?" autocomplete="off">
+      </label>
+      <div class="sheet-buttons">
+        <button class="big cancel" id="btn-person-cancel">❌<span>Cancel</span></button>
+        <button class="big done" id="btn-person-save">✅<span>Save</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <div id="drag-layer"></div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

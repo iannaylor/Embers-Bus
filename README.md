@@ -1,0 +1,82 @@
+# Ember's Bus 🚌
+
+A gentle, touch-friendly bus game made for Ember, who loves buses and carries
+pictures of her family and friends everywhere. Put the people you love on the
+bus, buckle them in, beep the horn, and drive!
+
+It runs in any modern browser on an iPad, phone, or laptop. There is nothing to
+install and no build step: it is one HTML page with plain CSS and JavaScript.
+
+## What you can do
+
+**Outside the bus**
+- 🚪 **Open the door** (tap the door on the bus, or the Open button) to go inside.
+- 📣 **Beep the horn** (tap the roof of the bus, or the Horn button).
+- ▶️ **Go / Stop**: tap the big green button, or swipe right to drive and swipe
+  left to stop. The wheels turn, the scenery rolls past, and the passengers wobble.
+- 🚏 **Bus stop**: the bus pulls up at a zebra crossing and your friends wait to
+  cross. Drag each person up across the road to the other side. The bus will not
+  go while somebody is still on the road!
+- 🧽 **Wash the bus**: the bus gets muddy as it drives. Rub it with the sponge to
+  pop the mud away and make it sparkle.
+- 🌧️ **Wipers**: rain starts and the windscreen wiper swishes.
+- 💡 **Lights**: night falls and the headlights come on.
+- 🎵 **Music**: "The Wheels on the Bus" plays on a little synth.
+- 🎨 **Colour**: choose from twelve bus colours.
+
+**Inside the bus**
+- Drag a person from the tray at the bottom onto any seat (including the
+  driver's seat!).
+- Tap a seated person to click the seat belt on. Tap again to take it off.
+- Drag a person off a seat to let them off the bus.
+- Close the door to go back outside. The people you seated appear in the bus
+  windows.
+
+**Adding people**
+- Inside the bus tap ➕, choose a photo (a face works best, it is cropped to a
+  circle), type a name, and Save. The photo is shrunk and kept only in the
+  browser on that device. Nothing is uploaded anywhere.
+- Tap ✏️ to edit or remove people.
+
+Everything (people, seats, seat belts, bus colour) is remembered on the device,
+so the bus is exactly how she left it next time.
+
+## Running it
+
+**Easiest:** open `index.html` in a browser. Everything works from a plain file.
+
+**On an iPad or phone:** the page needs to be served over HTTP so the device can
+reach it. Either:
+
+1. Turn on GitHub Pages for this repository (Settings → Pages → deploy from the
+   main branch, root folder). The game is then at
+   `https://<your-user>.github.io/Embers-Bus/`. Open it in Safari and use
+   *Share → Add to Home Screen* to get a full-screen app icon.
+2. Or serve it from a laptop on the same Wi-Fi:
+
+   ```sh
+   cd Embers-Bus
+   python3 -m http.server 8000
+   ```
+
+   then open `http://<laptop-ip>:8000/` on the iPad.
+
+Once it has loaded over HTTP it also works offline thanks to the small service
+worker.
+
+## Tips for grown-ups
+- Sound uses the device's Web Audio synth, so no sound files are needed. iOS
+  needs the first tap before it will make any noise, and the ringer switch
+  must not be on silent.
+- Keyboard on a laptop: `→` go, `←` or space stop, `H` horn, `W` wipers,
+  `L` lights, `M` music, `Enter` open the door, `Esc` close it.
+- Photos are stored in the browser's localStorage. Clearing site data will
+  remove them, so keep the originals.
+
+## Files
+- `index.html` — the page and the bus drawing (SVG)
+- `css/style.css` — layout, colours and animations
+- `js/app.js` — game logic (scenes, drag and drop, driving, washing, crossing)
+- `js/audio.js` — synthesised sounds and the tune
+- `js/store.js` — saving people and seats, resizing photos
+- `sw.js`, `manifest.webmanifest`, `icon.svg` — offline / home screen support
