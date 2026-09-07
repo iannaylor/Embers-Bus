@@ -233,48 +233,45 @@
     return best;
   }
 
-  function makeDraggable(el, info) {
-    el.addEventListener('pointerdown', e => {
-      if (e.button !== undefined && e.button !== 0) return;
-      if (e.target.closest('.remove')) return; // delete button handles itself
-      e.preventDefault();
-      const startX = e.clientX, startY = e.clientY;
-      let ghost = null;
-      let overSeat = null;
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-
-      const move = ev => {
-        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+  /** Shared drag state machine: returns move/end/cancel for a drag that began at (sx, sy). */
+  function startDrag(el, info, sx, sy) {
+    let ghost = null;
+    let overSeat = null;
+    let lastX = sx, lastY = sy;
+    const teardown = () => {
+      $('#inside').classList.remove('drag-active');
+      if (ghost) { ghost.remove(); ghost = null; }
+      el.classList.remove('dragging');
+      if (overSeat) { overSeat.classList.remove('over'); overSeat = null; }
+    };
+    return {
+      move(x, y) {
+        lastX = x; lastY = y;
         if (!ghost) {
-          if (Math.hypot(dx, dy) < 12) return;
+          if (Math.hypot(x - sx, y - sy) < 12) return;
           ghost = el.cloneNode(true);
           ghost.classList.remove('dragging', 'belted');
           dragLayer.appendChild(ghost);
           el.classList.add('dragging');
           $('#inside').classList.add('drag-active');
         }
-        const lp = toLocal(ev.clientX, ev.clientY);
+        const lp = toLocal(x, y);
         ghost.style.left = lp.x + 'px';
         ghost.style.top = lp.y + 'px';
-        const seat = seatNear(ev.clientX, ev.clientY);
+        const seat = seatNear(x, y);
         if (seat !== overSeat) {
           if (overSeat) overSeat.classList.remove('over');
           overSeat = seat;
           if (overSeat) overSeat.classList.add('over');
         }
-      };
-
-      const finish = ev => {
-        el.removeEventListener('pointermove', move);
-        el.removeEventListener('pointerup', finish);
-        el.removeEventListener('pointercancel', cancel);
-        $('#inside').classList.remove('drag-active');
-        if (!ghost) { onTap(el, info); return; }
-        ghost.remove();
-        el.classList.remove('dragging');
-        if (overSeat) overSeat.classList.remove('over');
-        const seat = seatNear(ev.clientX, ev.clientY);
-        const travelled = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+      },
+      end(x, y) {
+        if (x === undefined) { x = lastX; y = lastY; }
+        const lifted = !!ghost;
+        teardown();
+        if (!lifted) { onTap(el, info); return; }
+        const seat = seatNear(x, y);
+        const travelled = Math.hypot(x - sx, y - sy);
         if (seat && info.from === 'seat' && seat.dataset.seat === info.seat) {
           // Wobbled but ended on the same seat: a short wobble is a tap, otherwise nothing.
           if (travelled < 40) onTap(el, info);
@@ -286,18 +283,50 @@
           toast(`${Store.person(info.id).name || 'Friend'} got off the bus`);
           renderInside();
         }
-      };
+      },
+      cancel() { teardown(); }
+    };
+  }
 
-      const cancel = () => {
+  function makeDraggable(el, info) {
+    // Touch screens: raw touch events (the most dependable thing iOS has).
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      if (e.target.closest('.remove')) return;
+      e.preventDefault(); // this touch is ours: no scrolling, no zoom, no ghost clicks
+      const t0 = e.touches[0];
+      const id = t0.identifier;
+      const d = startDrag(el, info, t0.clientX, t0.clientY);
+      const find = ev => Array.from(ev.changedTouches).find(c => c.identifier === id);
+      const move = ev => { const c = find(ev); if (!c) return; ev.preventDefault(); d.move(c.clientX, c.clientY); };
+      const end = ev => { const c = find(ev); if (!c) return; cleanup(); d.end(c.clientX, c.clientY); };
+      const cancel = ev => { const c = find(ev); if (!c) return; cleanup(); d.cancel(); };
+      const cleanup = () => {
+        el.removeEventListener('touchmove', move);
+        el.removeEventListener('touchend', end);
+        el.removeEventListener('touchcancel', cancel);
+      };
+      el.addEventListener('touchmove', move, { passive: false });
+      el.addEventListener('touchend', end);
+      el.addEventListener('touchcancel', cancel);
+    }, { passive: false });
+
+    // Mouse / pen: pointer events.
+    el.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'touch') return;
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest('.remove')) return;
+      e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      const d = startDrag(el, info, e.clientX, e.clientY);
+      const move = ev => d.move(ev.clientX, ev.clientY);
+      const finish = ev => { cleanup(); d.end(ev.clientX, ev.clientY); };
+      const cancel = () => { cleanup(); d.cancel(); };
+      const cleanup = () => {
         el.removeEventListener('pointermove', move);
         el.removeEventListener('pointerup', finish);
         el.removeEventListener('pointercancel', cancel);
-        $('#inside').classList.remove('drag-active');
-        if (ghost) ghost.remove();
-        el.classList.remove('dragging');
-        if (overSeat) overSeat.classList.remove('over');
       };
-
       el.addEventListener('pointermove', move);
       el.addEventListener('pointerup', finish);
       el.addEventListener('pointercancel', cancel);
