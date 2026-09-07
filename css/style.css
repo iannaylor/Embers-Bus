@@ -27,7 +27,8 @@ html, body {
   font-weight: 700;
   color: var(--ui-text);
   background: var(--sky);
-  touch-action: manipulation;
+  /* pan only: no pinch-zoom and no double-tap zoom anywhere in the game */
+  touch-action: pan-x pan-y;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   overscroll-behavior: none;
 }
@@ -59,6 +60,13 @@ button:active { transform: scale(0.94); }
   background: var(--sky);
   transition: background 1s;
   touch-action: none;
+  flex-direction: column;
+}
+#outside.active { display: flex; }
+/* The scenery lives in the stage; the bottom buttons get their own band below it. */
+.stage {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  container-type: size;
 }
 #outside.night { background: var(--sky-night); }
 #outside { perspective: 1400px; }
@@ -167,6 +175,7 @@ button:active { transform: scale(0.94); }
   left: 6%;
   top: 84%;
   width: min(66vw, 96vh);
+  width: min(66cqw, 96cqh);
   transform: translateY(-84%);
   transition: left 0.6s ease-in-out;
 }
@@ -316,10 +325,15 @@ button:active { transform: scale(0.94); }
   flex-direction: column;
 }
 .toolbar.bottom {
-  left: 0; right: 0; bottom: max(10px, env(safe-area-inset-bottom));
-  justify-content: center; padding: 0 10px;
-  flex-wrap: wrap;
+  position: relative; flex: 0 0 auto;
+  justify-content: center; align-items: center;
+  padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+  background: var(--pavement);
+  border-top: 3px solid #b9b9c8;
+  flex-wrap: nowrap; overflow-x: auto;
 }
+.night .toolbar.bottom { filter: brightness(0.75); }
+.night .toolbar.bottom button { filter: brightness(1.33); }
 
 .tool {
   width: 64px; height: 64px; border-radius: 50%;
@@ -693,6 +707,11 @@ button:active { transform: scale(0.94); }
   }
   .tray .person { touch-action: pan-y; }
   .tray-actions { flex-direction: row; }
+}
+@media (max-width: 480px) {
+  .toolbar.bottom { gap: 6px; padding-left: 6px; padding-right: 6px; }
+  .toolbar.bottom .big { min-width: 62px; padding: 4px 4px; font-size: 24px; height: 66px; }
+  .toolbar.bottom .big span { font-size: 11px; }
 }
 @media (max-width: 640px) {
   .row { gap: 4px; }

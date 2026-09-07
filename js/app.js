@@ -34,6 +34,7 @@
   }
 
   const outside = $('#outside');
+  const stage = $('.stage');
   const inside = $('#inside');
   const busWrap = $('#bus-wrap');
   const busSvg = $('#bus');
@@ -846,7 +847,7 @@
   }
 
   function washAt(clientX, clientY) {
-    const rect = outside.getBoundingClientRect();
+    const rect = stage.getBoundingClientRect();
     sponge.style.left = (clientX - rect.left) + 'px';
     sponge.style.top = (clientY - rect.top) + 'px';
     const p = svgPoint(clientX, clientY);
@@ -907,7 +908,7 @@
   const crossingEl = $('#crossing');
   const pedsEl = $('#peds');
 
-  function sceneH() { return outside.getBoundingClientRect().height; }
+  function sceneH() { return stage.getBoundingClientRect().height; }
 
   function startCrossing() {
     stopDriving();
@@ -928,7 +929,7 @@
   }
 
   function placeCrossing() {
-    const sr = outside.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
     const br = busWrap.getBoundingClientRect();
     const left = facing.left ? br.left - sr.left - 20 - 90 : br.right - sr.left + 20;
     crossingEl.style.left = clamp(left, 0, sr.width - 100) + 'px';
@@ -967,7 +968,7 @@
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       el.classList.remove('waiting');
       hint.remove();
-      const sr = outside.getBoundingClientRect();
+      const sr = stage.getBoundingClientRect();
       const move = ev => {
         const y = clamp(ev.clientY - sr.top, H * 0.62, H * 0.97);
         el.style.top = y + 'px';
@@ -1066,7 +1067,7 @@
     // Move the sponge around even before pressing (nice on a laptop).
     outside.addEventListener('pointermove', e => {
       if (!wash.on || e.pointerType !== 'mouse' || e.buttons) return;
-      const rect = outside.getBoundingClientRect();
+      const rect = stage.getBoundingClientRect();
       sponge.style.left = (e.clientX - rect.left) + 'px';
       sponge.style.top = (e.clientY - rect.top) + 'px';
     });
@@ -1155,6 +1156,15 @@
     bindButtons();
     bindPersonSheet();
     bindOutsideGestures();
+    // Never let the page zoom: iOS ignores the viewport setting for pinches,
+    // so stop multi-finger and Safari "gesture" events at the source.
+    const block = e => { e.preventDefault(); };
+    document.addEventListener('gesturestart', block, { passive: false });
+    document.addEventListener('gesturechange', block, { passive: false });
+    document.addEventListener('gestureend', block, { passive: false });
+    document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !e.target.closest('#crop')) e.preventDefault(); }, { passive: false });
+    document.addEventListener('dblclick', block, { passive: false });
+    document.addEventListener('wheel', e => { if (e.ctrlKey && !e.target.closest('#crop')) e.preventDefault(); }, { passive: false });
     // unlock audio on the very first touch/click
     const unlock = () => { Sound.unlock(); };
     document.addEventListener('pointerdown', unlock, { once: true });
