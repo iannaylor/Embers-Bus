@@ -52,6 +52,12 @@ button:active { transform: scale(0.94); }
   left: max(12px, env(safe-area-inset-top, 0px));
   right: max(0px, env(safe-area-inset-bottom, 0px));
 }
+/* Belt and braces: whatever the phone reports, keep the buttons well away
+   from the clock (game left edge) and the home bar (game right edge). */
+#app.rotated .toolbar.side { left: 64px; }
+#app.rotated .toolbar.bottom { padding-right: 44px; }
+#app.rotated .inside-header { right: 44px; }
+#app.rotated .tray-wrap { padding-right: 36px; }
 
 /* ---------------------------------------------------------------- scenes */
 .scene {

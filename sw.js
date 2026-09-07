@@ -1,5 +1,5 @@
 /* Ember's Bus - tiny offline cache so the game works with no signal. */
-const CACHE = 'embers-bus-v1';
+const CACHE = 'embers-bus-v2';
 const FILES = [
   './', './index.html', './css/style.css',
   './js/audio.js', './js/store.js', './js/app.js',
@@ -19,8 +19,9 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Always ask the server for the latest copy (falls back to the cache offline).
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
