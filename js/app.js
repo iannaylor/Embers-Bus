@@ -1248,7 +1248,7 @@
     }
     const mode = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find(m => matchMedia(`(display-mode: ${m})`).matches) || '?';
     const r = app.getBoundingClientRect();
-    badge.textContent = `audio ${Sound.state()} · ${mode}${window.navigator.standalone ? '+apple' : ''} · inner ${window.innerWidth}x${window.innerHeight} · client ${document.documentElement.clientWidth}x${document.documentElement.clientHeight} · screen ${screen.width}x${screen.height} · app ${Math.round(r.width)}x${Math.round(r.height)} @${Math.round(r.left)},${Math.round(r.top)}`;
+    badge.textContent = `audio ${Sound.state()} · ${mode}${window.navigator.standalone ? '+apple' : ''} · inner ${window.innerWidth}x${window.innerHeight} · client ${document.documentElement.clientWidth}x${document.documentElement.clientHeight} · screen ${screen.width}x${screen.height} · app ${Math.round(r.width)}x${Math.round(r.height)} @${Math.round(r.left)},${Math.round(r.top)} · rot ${app.classList.contains('rotated')} ${app.style.width}x${app.style.height}`;
   }
 
   function init() {
@@ -1290,12 +1290,12 @@
       app.style.transformOrigin = '0 0';
       let base = '';
       if (portrait) {
-        // Size from what the page actually paints (a 100vh probe), not from
-        // innerHeight, which iOS home-screen apps report short on launch.
-        const standalone = isInstalled();
-        const probeH = viewportProbe.offsetHeight, probeW = viewportProbe.offsetWidth;
-        const H = Math.max(window.innerHeight, document.documentElement.clientHeight, probeH, standalone && screen.height > screen.width ? screen.height : 0);
-        const W = Math.max(window.innerWidth, document.documentElement.clientWidth, probeW, standalone && screen.height > screen.width ? screen.width : 0);
+        // Size to the part of the page that is really visible. Phones report
+        // several different heights (and iOS home-screen apps clip a strip at
+        // the bottom), so find the visible edge by probing with
+        // elementFromPoint, which returns nothing outside the viewport.
+        const vis = measureVisible();
+        const H = vis.h, W = vis.w;
         app.style.width = H + 'px';
         app.style.height = W + 'px';
         base = 'rotate(90deg) translateY(-100%)';
@@ -1312,10 +1312,28 @@
       if (crossing.active) placeCrossing();
       soundBadge();
     };
-    // invisible full-viewport element: its size is the truth about the screen
-    const viewportProbe = document.createElement('div');
-    viewportProbe.style.cssText = 'position:fixed;left:0;top:0;width:100vw;height:100vh;width:100lvw;height:100lvh;visibility:hidden;pointer-events:none;z-index:-1;';
-    document.body.appendChild(viewportProbe);
+    /** Largest visible width/height by binary-searching elementFromPoint. */
+    const measureVisible = () => {
+      const guessH = Math.max(window.innerHeight, document.documentElement.clientHeight, screen.height, 100);
+      const guessW = Math.max(window.innerWidth, document.documentElement.clientWidth, screen.width, 100);
+      const visibleAt = (x, y) => !!document.elementFromPoint(x, y);
+      const search = (limit, test) => {
+        let lo = 0, hi = limit + 4;
+        if (test(limit)) return limit;
+        for (let i = 0; i < 16 && hi - lo > 1; i++) {
+          const mid = (lo + hi) / 2;
+          if (test(mid)) lo = mid; else hi = mid;
+        }
+        return lo;
+      };
+      const h = search(guessH, y => visibleAt(2, y)) + 1;
+      const w = search(guessW, x => visibleAt(x, 2)) + 1;
+      // sanity: fall back to the reported size if probing gave nonsense
+      return {
+        h: h > 120 ? Math.round(h) : Math.max(window.innerHeight, document.documentElement.clientHeight),
+        w: w > 120 ? Math.round(w) : Math.max(window.innerWidth, document.documentElement.clientWidth)
+      };
+    };
     window.addEventListener('resize', layoutApp);
     window.addEventListener('orientationchange', () => setTimeout(layoutApp, 60));
     window.addEventListener('pageshow', () => setTimeout(layoutApp, 60));
