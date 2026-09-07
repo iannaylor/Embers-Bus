@@ -187,6 +187,18 @@ button:active { transform: scale(0.94); }
 #bus-wrap.facing-left { left: 28%; }
 .facing-left #door, .facing-left #tap-door { display: none; }
 
+/* Short scenery (phones on their side): make the bus as big as the width allows. */
+@container (max-height: 460px) {
+  #bus-wrap { width: min(84cqw, 190cqh); left: 3%; }
+  #bus-wrap.facing-left { left: 13%; }
+  .road { height: 26%; }
+  .near-pavement { top: 90%; }
+  .far-pavement { top: 60%; }
+  .sun { width: 11vmin; height: 11vmin; }
+  .hills { top: 34%; }
+  .houses { top: 38%; }
+}
+
 #bus-wrap.honk { animation: honk 0.5s; }
 @keyframes honk {
   0%, 100% { transform: translateY(-84%); }
@@ -678,7 +690,8 @@ button:active { transform: scale(0.94); }
 
 /* ============================================================ small screens */
 @media (max-height: 520px) {
-  .big { height: 58px; min-width: 76px; font-size: 22px; padding: 4px 10px; }
+  .toolbar.bottom { padding-top: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); gap: 8px; }
+  .big { height: 54px; min-width: 72px; font-size: 22px; padding: 2px 8px; }
   .big span { font-size: 12px; }
   .tool { width: 50px; height: 50px; font-size: 24px; }
   .toolbar.side { gap: 6px; }

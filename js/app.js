@@ -569,8 +569,8 @@
       const aisle = aislePid && Store.person(aislePid);
       const window_ = windowPid && Store.person(windowPid);
       // aisle-seat person sits a little further back, drawn first (behind)
-      if (aisle) g.appendChild(svgFace(aisle, x + (window_ ? 58 : 43), 146, 16, `w${r}b`));
-      if (window_) g.appendChild(svgFace(window_, x + (aisle ? 32 : 43), 150, 19, `w${r}a`));
+      if (aisle) g.appendChild(svgFace(aisle, x + (window_ ? 60 : 43), 146, window_ ? 19 : 24, `w${r}b`));
+      if (window_) g.appendChild(svgFace(window_, x + (aisle ? 30 : 43), 149, aisle ? 23 : 25, `w${r}a`));
       wins.appendChild(g);
     }
     const drv = $('#driver-face');
@@ -580,7 +580,7 @@
     if (driver) {
       const g = document.createElementNS(SVG_NS, 'g');
       g.setAttribute('clip-path', 'url(#clip-screen)');
-      g.appendChild(svgFace(driver, 568, 158, 22, 'drv'));
+      g.appendChild(svgFace(driver, 566, 156, 26, 'drv'));
       drv.appendChild(g);
     }
     // keep the destination sign readable when mirrored
