@@ -12,8 +12,11 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 **Outside the bus**
 - 🚪 **Open the door** (tap the door on the bus, or the Open button) to go inside.
 - 📣 **Beep the horn** (tap the roof of the bus, or the Horn button).
-- ▶️ **Go / Stop**: tap the big green button, or swipe right to drive and swipe
-  left to stop. The wheels turn, the scenery rolls past, and the passengers wobble.
+- 👉 **Push the bus**: drag the bus (or swipe anywhere) in the direction you
+  want it to go. If that is the way it is facing it drives off; if it is the
+  other way it spins round first, then drives. The wheels turn, the scenery
+  rolls past, and the passengers wobble.
+- ▶️ **Go / Stop** buttons do the same without gestures.
 - 🚏 **Bus stop**: the bus pulls up at a zebra crossing and your friends wait to
   cross. Drag each person up across the road to the other side. The bus will not
   go while somebody is still on the road!
@@ -50,6 +53,15 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 Everything (people, seats, seat belts, bus colour) is remembered on the device,
 so the bus is exactly how she left it next time.
 
+**Sharing the family between devices**
+- Tap ✏️ then 📤 to save a `people.json` file with everyone in it.
+- Put that file in the game folder (the root of this repository, next to
+  `index.html`) and push it. From then on every device loads those people
+  automatically the first time it opens the game.
+- Or tap ✏️ then 📥 on another device and choose the file to load them in.
+- Someone you delete on a device stays deleted there, even if they are in the
+  shared file.
+
 ## Playing it
 
 **Play it here:** https://iannaylor.github.io/Embers-Bus/
@@ -83,7 +95,7 @@ worker.
 - Sound uses the device's Web Audio synth, so no sound files are needed. iOS
   needs the first tap before it will make any noise, and the ringer switch
   must not be on silent.
-- Keyboard on a laptop: `→` go, `←` or space stop, `H` horn, `W` wipers,
+- Keyboard on a laptop: `→` drive right, `←` drive left (turning if needed), space stop, `H` horn, `W` wipers,
   `L` lights, `M` music, `T` turn round, `Enter` open the door, `Esc` close it.
 - Photos are stored in the browser's localStorage. Clearing site data will
   remove them, so keep the originals.

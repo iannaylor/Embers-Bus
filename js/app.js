@@ -422,6 +422,34 @@
       $('#btn-edit').classList.toggle('active', on);
       toast(on ? 'Tap a person to change them, or ✖ to remove' : 'Done editing');
     });
+    $('#btn-export').addEventListener('click', () => {
+      Sound.tap();
+      const blob = new Blob([Store.exportPeople()], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'people.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast('Saved people.json. Put it in the game folder to share everyone 📤', 4000);
+    });
+    $('#btn-import').addEventListener('click', () => $('#people-file-input').click());
+    $('#people-file-input').addEventListener('change', async e => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        const added = Store.mergePeople(data.people || data, true);
+        renderInside();
+        Sound.cheer();
+        toast(added ? `Added ${added} ${added === 1 ? 'person' : 'people'} 🎉` : 'Everyone was already here');
+      } catch (err) {
+        toast('Sorry, that file did not work');
+      }
+    });
     $('#btn-photo').addEventListener('click', () => $('#file-input').click());
     $('#file-input').addEventListener('change', async e => {
       const file = e.target.files && e.target.files[0];
@@ -565,7 +593,7 @@
   const facing = { left: false, turning: false };
   const busTurn = $('#bus-turn');
 
-  function turnAround() {
+  function turnAround(done) {
     if (facing.turning) return;
     facing.turning = true;
     stopDriving(true);
@@ -583,9 +611,22 @@
       void busTurn.offsetWidth;
       busTurn.classList.remove('snap');
       busTurn.style.transform = 'rotateY(0deg)';
-      setTimeout(() => { facing.turning = false; }, 400);
-      toast(facing.left ? 'Now you can see the other side 👀' : 'Back to the door side 🚪');
+      setTimeout(() => { facing.turning = false; if (done) done(); }, 400);
+      if (!done) toast(facing.left ? 'Now you can see the other side 👀' : 'Back to the door side 🚪');
     }, 370);
+  }
+
+  /** Drive off towards `dir` ('left' or 'right'), turning round first if needed. */
+  function goDirection(dir) {
+    if (facing.turning) return;
+    if (crossing.active && crossing.pedOnRoad) {
+      Sound.horn();
+      toast(`Wait! ${crossing.current.name || 'Someone'} is still crossing! ✋`);
+      return;
+    }
+    const wantLeft = dir === 'left';
+    if (wantLeft !== facing.left) turnAround(() => startDriving());
+    else startDriving();
   }
 
   /* ========================================================================
@@ -969,6 +1010,9 @@
   /* ========================================================================
      OUTSIDE - gestures (swipe to go / stop, wash by rubbing)
      ======================================================================== */
+  let lastDragEnd = 0; // so a push that started on the bus does not also honk / open the door
+  function recentlyDragged() { return performance.now() - lastDragEnd < 350; }
+
   function bindOutsideGestures() {
     outside.addEventListener('pointerdown', e => {
       if (e.target.closest('button, .ped, .sheet')) return;
@@ -986,19 +1030,36 @@
         outside.addEventListener('pointercancel', up);
         return;
       }
+      // Push the bus: it nudges along with the finger, then drives off that way.
+      const onBus = !!e.target.closest('#bus-wrap');
       const sx = e.clientX, sy = e.clientY;
+      let moved = false;
+      const move = ev => {
+        const dx = ev.clientX - sx;
+        if (Math.abs(dx) > 10) moved = true;
+        if (onBus && !facing.turning) {
+          busTurn.style.transform = `translateX(${clamp(dx * 0.45, -60, 60)}px)`;
+        }
+      };
       const up = ev => {
-        outside.removeEventListener('pointerup', up);
-        outside.removeEventListener('pointercancel', cancel);
+        cleanup();
         const dx = ev.clientX - sx, dy = ev.clientY - sy;
-        if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-          if (dx > 0) startDriving(); else stopDriving();
+        if (onBus && !facing.turning) busTurn.style.transform = '';
+        if (moved) lastDragEnd = performance.now();
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          goDirection(dx > 0 ? 'right' : 'left');
         }
       };
       const cancel = () => {
+        cleanup();
+        if (onBus && !facing.turning) busTurn.style.transform = '';
+      };
+      const cleanup = () => {
+        outside.removeEventListener('pointermove', move);
         outside.removeEventListener('pointerup', up);
         outside.removeEventListener('pointercancel', cancel);
       };
+      outside.addEventListener('pointermove', move);
       outside.addEventListener('pointerup', up);
       outside.addEventListener('pointercancel', cancel);
     });
@@ -1010,8 +1071,8 @@
       sponge.style.top = (e.clientY - rect.top) + 'px';
     });
 
-    $('#tap-door').addEventListener('click', () => { if (!wash.on) openDoor(); });
-    $('#tap-horn').addEventListener('click', () => { if (!wash.on) honk(); });
+    $('#tap-door').addEventListener('click', () => { if (!wash.on && !recentlyDragged()) openDoor(); });
+    $('#tap-horn').addEventListener('click', () => { if (!wash.on && !recentlyDragged()) honk(); });
   }
 
   /* ========================================================================
@@ -1027,7 +1088,7 @@
       if (crossing.active) { endCrossing(); toast('Bus stop finished'); }
       else startCrossing();
     });
-    $('#btn-turn').addEventListener('click', turnAround);
+    $('#btn-turn').addEventListener('click', () => turnAround());
     $('#btn-wipers').addEventListener('click', toggleWipers);
     $('#btn-lights').addEventListener('click', toggleLights);
     $('#btn-music').addEventListener('click', openMusic);
@@ -1044,8 +1105,9 @@
       if (e.target.tagName === 'INPUT') return;
       if (!outside.classList.contains('active')) { if (e.key === 'Escape') showOutside(); return; }
       switch (e.key) {
-        case 'ArrowRight': startDriving(); break;
-        case 'ArrowLeft': case ' ': stopDriving(); break;
+        case 'ArrowRight': goDirection('right'); break;
+        case 'ArrowLeft': goDirection('left'); break;
+        case ' ': stopDriving(); break;
         case 'h': case 'H': honk(); break;
         case 'w': case 'W': toggleWipers(); break;
         case 'l': case 'L': toggleLights(); break;
@@ -1068,8 +1130,22 @@
     });
   }
 
+  /** people.json in the game folder holds the shared family: everyone gets them on every device. */
+  function loadSharedPeople() {
+    if (!location.protocol.startsWith('http')) return;
+    fetch('people.json', { cache: 'no-cache' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!data) return;
+        const added = Store.mergePeople(data.people || data, false);
+        if (added) renderInside();
+      })
+      .catch(() => { /* no shared file yet, that is fine */ });
+  }
+
   function init() {
     Store.load();
+    loadSharedPeople();
     buildSwatches();
     buildSongList();
     applyColor(Store.state.color);
@@ -1084,6 +1160,7 @@
     document.addEventListener('pointerdown', unlock, { once: true });
     document.addEventListener('keydown', unlock, { once: true });
     ensureLoop(); // clouds drift even when parked
+    setTimeout(() => toast('Push the bus with your finger to drive! 👉🚌', 3500), 1200);
 
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });

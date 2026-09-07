@@ -97,9 +97,12 @@
     horn() {
       if (!ensure()) return;
       const t = ctx.currentTime;
-      tone(311, 'sawtooth', t, 0.7, 0.28, { lowpass: 900, attack: 0.03 });
-      tone(392, 'sawtooth', t, 0.7, 0.24, { lowpass: 900, attack: 0.03 });
-      tone(156, 'square', t, 0.7, 0.12, { lowpass: 600, attack: 0.03 });
+      // beep beep!
+      [0, 0.32].forEach(d => {
+        tone(311, 'sawtooth', t + d, 0.22, 0.34, { lowpass: 1000, attack: 0.02 });
+        tone(392, 'sawtooth', t + d, 0.22, 0.3, { lowpass: 1000, attack: 0.02 });
+        tone(156, 'square', t + d, 0.22, 0.14, { lowpass: 600, attack: 0.02 });
+      });
     },
 
     doorHiss() {

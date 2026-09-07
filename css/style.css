@@ -592,6 +592,9 @@ button:active { transform: scale(0.94); }
 .tray-actions { display: flex; flex-direction: column; gap: 8px; }
 .tool.add { background: #7ee787; }
 .tool.edit.active { background: #ffb3b3; outline-color: #ff5a5a; box-shadow: 0 4px 0 #c94a4a; }
+.edit-only { display: none; }
+.editing .edit-only { display: block; }
+.tool.share { background: #dcd2ff; width: 52px; height: 52px; font-size: 24px; }
 
 /* ================================================================= sheets */
 .sheet {

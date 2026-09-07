@@ -19,7 +19,8 @@
       { id: 'p-cat', name: 'Cat', emoji: '🐱' }
     ],
     seats: {},   // seatId -> personId
-    belts: {}    // seatId -> true
+    belts: {},   // seatId -> true
+    removed: []  // ids of shared (people.json) people deleted on this device
   };
 
   let state = null;
@@ -33,6 +34,7 @@
         state.people = parsed.people || [];
         state.seats = parsed.seats || {};
         state.belts = parsed.belts || {};
+        state.removed = parsed.removed || [];
         return state;
       }
     } catch (e) {
@@ -106,10 +108,35 @@
     },
     removePerson(id) {
       state.people = state.people.filter(p => p.id !== id);
+      if (!state.removed.includes(id)) state.removed.push(id);
       Object.keys(state.seats).forEach(seat => {
         if (state.seats[seat] === id) { delete state.seats[seat]; delete state.belts[seat]; }
       });
       save();
+    },
+
+    /** JSON of everyone, for sharing between devices via people.json. */
+    exportPeople() {
+      return JSON.stringify({ people: state.people }, null, 1);
+    },
+    /**
+     * Add people from a shared list that are not here yet (matched by id).
+     * Shared people deleted on this device stay deleted unless `force`.
+     * Returns how many were added.
+     */
+    mergePeople(list, force) {
+      if (!Array.isArray(list)) return 0;
+      let added = 0;
+      list.forEach(p => {
+        if (!p || !p.id || (!p.img && !p.emoji)) return;
+        if (state.people.some(q => q.id === p.id)) return;
+        if (!force && state.removed.includes(p.id)) return;
+        state.people.push({ id: String(p.id), name: String(p.name || '').slice(0, 16), img: p.img, emoji: p.emoji });
+        state.removed = state.removed.filter(r => r !== p.id);
+        added++;
+      });
+      if (added) save();
+      return added;
     },
 
     seatOf(personId) {
