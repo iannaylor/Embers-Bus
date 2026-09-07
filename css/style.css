@@ -51,8 +51,7 @@ button:active { transform: scale(0.94); }
 /* The scenery fills the whole screen; only the buttons keep clear (below). */
 /* Belt and braces: whatever the phone reports, keep the buttons well away
    from the clock (game left edge) and the home bar (game right edge). */
-#app.rotated .toolbar.side { left: 64px; }
-#app.rotated .toolbar.bottom { padding-right: 44px; }
+#app.rotated .toolbar.bottom { padding-left: 64px; padding-right: 44px; }
 #app.rotated .inside-header { right: 44px; }
 #app.rotated .tray-wrap { padding-right: 36px; }
 
@@ -343,11 +342,6 @@ button:active { transform: scale(0.94); }
   pointer-events: none; /* only the buttons themselves catch touches */
 }
 .toolbar button { pointer-events: auto; }
-.toolbar.side {
-  right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
-  flex-direction: column;
-  z-index: 11; /* above the bottom band */
-}
 .toolbar.bottom {
   position: relative; flex: 0 0 auto;
   justify-content: center; align-items: center;
@@ -356,6 +350,7 @@ button:active { transform: scale(0.94); }
   border-top: 3px solid #b9b9c8;
   flex-wrap: nowrap; overflow-x: auto;
 }
+.toolbar.bottom button[hidden] { display: none !important; }
 .night .toolbar.bottom { filter: brightness(0.75); }
 .night .toolbar.bottom button { filter: brightness(1.33); }
 
@@ -386,6 +381,12 @@ button:active { transform: scale(0.94); }
 }
 .big span { font-size: 15px; margin-top: 4px; }
 .big .icon-crossing { width: 1.15em; height: 1.15em; display: block; }
+.big.active { outline: 4px solid #ff7a1a; outline-offset: -2px; filter: brightness(1.08); }
+.big.colour { background: #ffc4e1; box-shadow: 0 5px 0 #d16a9e, 0 8px 16px rgba(0,0,0,0.22); }
+.big.wash { background: #b9ecff; box-shadow: 0 5px 0 #4fb0d6, 0 8px 16px rgba(0,0,0,0.22); }
+.big.wipers { background: #d6dcff; box-shadow: 0 5px 0 #7a86d9, 0 8px 16px rgba(0,0,0,0.22); }
+.big.lights { background: #fff2a8; box-shadow: 0 5px 0 #d3b000, 0 8px 16px rgba(0,0,0,0.22); }
+.big.music { background: #e2c9ff; box-shadow: 0 5px 0 #9a6fd6, 0 8px 16px rgba(0,0,0,0.22); }
 .big.horn { background: #ffd84a; box-shadow: 0 5px 0 #c9a400, 0 8px 16px rgba(0,0,0,0.22); }
 .big.door { background: #8ee0ff; box-shadow: 0 5px 0 #3fa6cc, 0 8px 16px rgba(0,0,0,0.22); }
 .big.go { background: #7ee787; box-shadow: 0 5px 0 #2e9e3c, 0 8px 16px rgba(0,0,0,0.22); }
@@ -711,16 +712,11 @@ button:active { transform: scale(0.94); }
   /* One slim strip of icon-only buttons along the bottom: the five round
      tools on the left, the five big actions on the right. */
   .toolbar.bottom {
-    justify-content: flex-end; gap: 6px;
-    padding: 4px max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) 8px;
+    justify-content: center; gap: 6px;
+    padding: 4px max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   }
-  #outside .big { height: 48px; min-width: 58px; font-size: 26px; padding: 0 6px; border-radius: 16px; }
+  #outside .big { height: 48px; min-width: 56px; font-size: 26px; padding: 0 6px; border-radius: 16px; }
   #outside .big span { display: none; }
-  .toolbar.side {
-    top: auto; right: auto;
-    left: max(8px, env(safe-area-inset-left)); bottom: max(6px, env(safe-area-inset-bottom));
-    flex-direction: row; gap: 6px;
-  }
   .tool { width: 44px; height: 44px; font-size: 22px; box-shadow: 0 3px 0 #b9b9c8, 0 4px 10px rgba(0,0,0,0.2); }
   .tool::after { display: none; }
   .inside-header { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 4px; }

@@ -1120,6 +1120,10 @@
         if (moved) lastDragEnd = performance.now();
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
           goDirection(dx > 0 ? 'right' : 'left');
+        } else if (!moved && onBus && drive.on) {
+          // a tap on the moving bus pulls it up
+          stopDriving();
+          lastDragEnd = performance.now(); // and does not also honk / open the door
         }
       };
       const cancel = () => {

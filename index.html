@@ -160,18 +160,14 @@
     <div id="sponge" class="sponge hidden">🧽</div>
     </div><!-- /stage -->
 
-    <div class="toolbar side">
-      <button class="tool" id="btn-color" data-label="Colour">🎨</button>
-      <button class="tool" id="btn-wash" data-label="Wash">🧽</button>
-      <button class="tool" id="btn-wipers" data-label="Wipers">🌧️</button>
-      <button class="tool" id="btn-lights" data-label="Lights">💡</button>
-      <button class="tool" id="btn-music" data-label="Music">🎵</button>
-    </div>
-
     <div class="toolbar bottom">
+      <button class="big colour" id="btn-color">🎨<span>Colour</span></button>
+      <button class="big wash" id="btn-wash">🧽<span>Wash</span></button>
+      <button class="big wipers" id="btn-wipers">🌧️<span>Wipers</span></button>
+      <button class="big lights" id="btn-lights">💡<span>Lights</span></button>
+      <button class="big music" id="btn-music">🎵<span>Music</span></button>
       <button class="big horn" id="btn-horn">📣<span>Horn</span></button>
       <button class="big door" id="btn-door">🚪<span>Open</span></button>
-      <button class="big go" id="btn-go">▶️<span>Go!</span></button>
       <button class="big stop" id="btn-busstop" aria-label="Bus stop">
         <svg class="icon-crossing" viewBox="0 0 44 44" aria-hidden="true">
           <rect x="2" y="6" width="40" height="32" rx="7" fill="#3a3a4a"/>
@@ -182,7 +178,9 @@
         </svg>
         <span>Bus stop</span>
       </button>
-      <button class="big turn" id="btn-turn">🔄<span>Turn</span></button>
+      <!-- driving and turning are done by pushing the bus; these stay for keyboard/JS only -->
+      <button class="big go" id="btn-go" hidden>▶️<span>Go!</span></button>
+      <button class="big turn" id="btn-turn" hidden>🔄<span>Turn</span></button>
     </div>
   </section>
 
