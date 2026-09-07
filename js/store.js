@@ -129,8 +129,8 @@
     mergePeople(list, force, layout) {
       if (!Array.isArray(list)) return 0;
       let added = 0;
-      // A brand-new device also takes the shared seating plan.
-      if (fresh && layout && layout.seats && Object.keys(state.seats).length === 0) {
+      // A device with an empty bus takes the shared seating plan too.
+      if (layout && layout.seats && Object.keys(state.seats).length === 0) {
         state.seats = Object.assign({}, layout.seats);
         state.belts = Object.assign({}, layout.belts || {});
         fresh = false;

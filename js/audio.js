@@ -14,6 +14,23 @@
   let melodyNodes = [];
   let melodyPlaying = false;
   let muted = false;
+  let unlockAudioEl = null;   // silent <audio> that puts iOS into "playback" mode (beats the ringer switch)
+
+  // 0.1 s of silence as a WAV data URL (44-byte header + 800 zero samples).
+  function silentWav() {
+    const samples = 800, rate = 8000;
+    const buf = new ArrayBuffer(44 + samples);
+    const v = new DataView(buf);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + samples, true); str(8, 'WAVE');
+    str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, 'data'); v.setUint32(40, samples, true);
+    for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128);
+    let bin = '';
+    new Uint8Array(buf).forEach(b => { bin += String.fromCharCode(b); });
+    return 'data:audio/wav;base64,' + btoa(bin);
+  }
 
   function ensure() {
     if (!ctx) {
@@ -85,8 +102,36 @@
   }
 
   const Sound = {
-    /** Call on the first user gesture so iOS lets us make noise. */
-    unlock() { ensure(); },
+    /**
+     * Call from a real user gesture (touchend / click). Resumes the context
+     * and plays a silent media element so iPhones make sound even with the
+     * ringer switch on silent. Safe to call repeatedly.
+     */
+    unlock() {
+      const c = ensure();
+      if (c && c.state !== 'running') c.resume().catch(() => {});
+      try {
+        if (!unlockAudioEl) {
+          unlockAudioEl = document.createElement('audio');
+          unlockAudioEl.setAttribute('playsinline', '');
+          unlockAudioEl.setAttribute('webkit-playsinline', '');
+          unlockAudioEl.loop = true;
+          unlockAudioEl.volume = 0.01;
+          unlockAudioEl.src = silentWav();
+        }
+        if (unlockAudioEl.paused) unlockAudioEl.play().catch(() => {});
+      } catch (e) { /* ignore */ }
+      // iOS also likes a real buffer to be started inside the gesture
+      if (c) {
+        try {
+          const src = c.createBufferSource();
+          src.buffer = c.createBuffer(1, 1, c.sampleRate);
+          src.connect(c.destination);
+          src.start(0);
+        } catch (e) { /* ignore */ }
+      }
+    },
+    isRunning() { return !!ctx && ctx.state === 'running'; },
 
     setMuted(m) {
       muted = m;

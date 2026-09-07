@@ -53,7 +53,10 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 Everything (people, seats, seat belts, bus colour) is remembered on the device,
 so the bus is exactly how she left it next time.
 
-**Sharing the family between devices (grown-ups)**
+**The family is built in.** `people.json` in this folder holds everyone and
+their seats, so any device that opens the game gets them straight away.
+
+**Updating that file (grown-ups)**
 - On the device that has everyone, open the game with `?export` on the end of
   the address (for example `https://iannaylor.github.io/Embers-Bus/?export`).
   It downloads a `people.json` file with everyone in it.
@@ -93,9 +96,11 @@ Once it has loaded over HTTP it also works offline thanks to the small service
 worker.
 
 ## Tips for grown-ups
-- Sound uses the device's Web Audio synth, so no sound files are needed. iOS
-  needs the first tap before it will make any noise, and the ringer switch
-  must not be on silent.
+- Sound uses the device's Web Audio synth, so no sound files are needed. It
+  starts after the first tap. On an iPhone the game also plays a silent
+  track so sound works even with the ringer switch on silent.
+- On a phone held upright the game turns itself sideways so the bus is always
+  shown in landscape, nice and big.
 - Keyboard on a laptop: `→` drive right, `←` drive left (turning if needed), space stop, `H` horn, `W` wipers,
   `L` lights, `M` music, `T` turn round, `Enter` open the door, `Esc` close it.
 - Photos are stored in the browser's localStorage. Clearing site data will

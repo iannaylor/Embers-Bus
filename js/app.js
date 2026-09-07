@@ -35,6 +35,30 @@
 
   const outside = $('#outside');
   const stage = $('.stage');
+  const app = $('#app');
+
+  /* --- pointer maths -------------------------------------------------------
+     #app may be rotated (phone held upright) and/or counter-scaled (browser
+     zoom). Everything inside is untransformed, so converting pointer
+     positions into #app's own coordinate space makes all the game logic
+     orientation-proof. */
+  function appMatrix() {
+    const t = getComputedStyle(app).transform;
+    return (t && t !== 'none') ? new DOMMatrix(t) : new DOMMatrix();
+  }
+  function toLocal(clientX, clientY) {
+    const p = new DOMPoint(clientX, clientY).matrixTransform(appMatrix().inverse());
+    return { x: p.x, y: p.y };
+  }
+  function localRect(el) {
+    const r = el.getBoundingClientRect();
+    const inv = appMatrix().inverse();
+    const a = new DOMPoint(r.left, r.top).matrixTransform(inv);
+    const b = new DOMPoint(r.right, r.bottom).matrixTransform(inv);
+    const left = Math.min(a.x, b.x), top = Math.min(a.y, b.y);
+    const right = Math.max(a.x, b.x), bottom = Math.max(a.y, b.y);
+    return { left, top, right, bottom, width: right - left, height: bottom - top };
+  }
   const inside = $('#inside');
   const busWrap = $('#bus-wrap');
   const busSvg = $('#bus');
@@ -199,8 +223,9 @@
           el.classList.add('dragging');
           $('#inside').classList.add('drag-active');
         }
-        ghost.style.left = ev.clientX + 'px';
-        ghost.style.top = ev.clientY + 'px';
+        const lp = toLocal(ev.clientX, ev.clientY);
+        ghost.style.left = lp.x + 'px';
+        ghost.style.top = lp.y + 'px';
         const under = document.elementFromPoint(ev.clientX, ev.clientY);
         const seat = under && under.closest('.seat');
         if (seat !== overSeat) {
@@ -343,8 +368,9 @@
   }
   function bindCropper() {
     const rel = e => {
-      const r = cropCanvas.getBoundingClientRect();
-      return { x: e.clientX - r.left - r.width / 2, y: e.clientY - r.top - r.height / 2 };
+      const r = localRect(cropCanvas);
+      const p = toLocal(e.clientX, e.clientY);
+      return { x: p.x - r.left - r.width / 2, y: p.y - r.top - r.height / 2 };
     };
     cropEl.addEventListener('pointerdown', e => {
       if (!crop.img) return;
@@ -819,9 +845,10 @@
   }
 
   function washAt(clientX, clientY) {
-    const rect = stage.getBoundingClientRect();
-    sponge.style.left = (clientX - rect.left) + 'px';
-    sponge.style.top = (clientY - rect.top) + 'px';
+    const rect = localRect(stage);
+    const lp = toLocal(clientX, clientY);
+    sponge.style.left = (lp.x - rect.left) + 'px';
+    sponge.style.top = (lp.y - rect.top) + 'px';
     const p = svgPoint(clientX, clientY);
     if (facing.left) p.x = 640 - p.x; // dirt lives inside the mirrored group
     const onBus = p.x > 30 && p.x < 610 && p.y > 50 && p.y < 320;
@@ -829,7 +856,7 @@
     const now = performance.now();
     if (now - wash.lastBubble > 70) {
       wash.lastBubble = now;
-      spawnBubble(clientX - rect.left + (Math.random() - 0.5) * 50, clientY - rect.top + (Math.random() - 0.5) * 30);
+      spawnBubble(lp.x - rect.left + (Math.random() - 0.5) * 50, lp.y - rect.top + (Math.random() - 0.5) * 30);
     }
     if (now - wash.lastSplash > 220) { wash.lastSplash = now; Sound.splash(); }
     let removed = false;
@@ -880,7 +907,7 @@
   const crossingEl = $('#crossing');
   const pedsEl = $('#peds');
 
-  function sceneH() { return stage.getBoundingClientRect().height; }
+  function sceneH() { return localRect(stage).height; }
 
   function startCrossing() {
     stopDriving();
@@ -901,8 +928,8 @@
   }
 
   function placeCrossing() {
-    const sr = stage.getBoundingClientRect();
-    const br = busWrap.getBoundingClientRect();
+    const sr = localRect(stage);
+    const br = localRect(busWrap);
     const left = facing.left ? br.left - sr.left - 20 - 90 : br.right - sr.left + 20;
     crossingEl.style.left = clamp(left, 0, sr.width - 100) + 'px';
   }
@@ -940,9 +967,9 @@
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       el.classList.remove('waiting');
       hint.remove();
-      const sr = stage.getBoundingClientRect();
+      const sr = localRect(stage);
       const move = ev => {
-        const y = clamp(ev.clientY - sr.top, H * 0.62, H * 0.97);
+        const y = clamp(toLocal(ev.clientX, ev.clientY).y - sr.top, H * 0.62, H * 0.97);
         el.style.top = y + 'px';
         crossing.pedOnRoad = y > H * 0.66 && y < H * 0.88;
       };
@@ -1005,10 +1032,11 @@
       }
       // Push the bus: it nudges along with the finger, then drives off that way.
       const onBus = !!e.target.closest('#bus-wrap');
-      const sx = e.clientX, sy = e.clientY;
+      const start = toLocal(e.clientX, e.clientY);
+      const sx = start.x, sy = start.y;
       let moved = false;
       const move = ev => {
-        const dx = ev.clientX - sx;
+        const dx = toLocal(ev.clientX, ev.clientY).x - sx;
         if (Math.abs(dx) > 10) moved = true;
         if (onBus && !facing.turning) {
           busTurn.style.transform = `translateX(${clamp(dx * 0.45, -60, 60)}px)`;
@@ -1016,7 +1044,8 @@
       };
       const up = ev => {
         cleanup();
-        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        const lp = toLocal(ev.clientX, ev.clientY);
+        const dx = lp.x - sx, dy = lp.y - sy;
         if (onBus && !facing.turning) busTurn.style.transform = '';
         if (moved) lastDragEnd = performance.now();
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
@@ -1039,9 +1068,10 @@
     // Move the sponge around even before pressing (nice on a laptop).
     outside.addEventListener('pointermove', e => {
       if (!wash.on || e.pointerType !== 'mouse' || e.buttons) return;
-      const rect = stage.getBoundingClientRect();
-      sponge.style.left = (e.clientX - rect.left) + 'px';
-      sponge.style.top = (e.clientY - rect.top) + 'px';
+      const rect = localRect(stage);
+      const lp = toLocal(e.clientX, e.clientY);
+      sponge.style.left = (lp.x - rect.left) + 'px';
+      sponge.style.top = (lp.y - rect.top) + 'px';
     });
 
     $('#tap-door').addEventListener('click', () => { if (!wash.on && !recentlyDragged()) openDoor(); });
@@ -1166,28 +1196,41 @@
     document.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0', 'Add', 'Subtract'].includes(e.key)) e.preventDefault();
     });
-    // And if the browser zooms anyway, undo it: scale the whole game to fit
-    // exactly the part of the page that is visible, so zoom is harmless.
-    const app = $('#app');
-    const fitToVisible = () => {
-      const vv = window.visualViewport;
-      if (!vv) return;
-      if (Math.abs(vv.scale - 1) < 0.005) {
-        app.style.transform = '';
-        return;
-      }
+    // Phones held upright: rotate the whole game so it is always landscape.
+    // And if the browser zooms anyway, counter-scale the game to the visible
+    // part of the page so zoom is harmless.
+    const layoutApp = () => {
+      const portrait = window.innerHeight > window.innerWidth && window.innerWidth <= 900;
+      app.classList.toggle('rotated', portrait);
       app.style.transformOrigin = '0 0';
-      app.style.transform = `translate(${vv.offsetLeft}px, ${vv.offsetTop}px) scale(${1 / vv.scale})`;
+      let base = '';
+      if (portrait) {
+        app.style.width = window.innerHeight + 'px';
+        app.style.height = window.innerWidth + 'px';
+        base = 'rotate(90deg) translateY(-100%)';
+      } else {
+        app.style.width = '';
+        app.style.height = '';
+      }
+      const vv = window.visualViewport;
+      let zoom = '';
+      if (vv && Math.abs(vv.scale - 1) >= 0.005) {
+        zoom = `translate(${vv.offsetLeft}px, ${vv.offsetTop}px) scale(${1 / vv.scale}) `;
+      }
+      app.style.transform = zoom + base;
+      if (crossing.active) placeCrossing();
     };
+    window.addEventListener('resize', layoutApp);
+    window.addEventListener('orientationchange', () => setTimeout(layoutApp, 60));
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', fitToVisible);
-      window.visualViewport.addEventListener('scroll', fitToVisible);
-      fitToVisible();
+      window.visualViewport.addEventListener('resize', layoutApp);
+      window.visualViewport.addEventListener('scroll', layoutApp);
     }
-    // unlock audio on the very first touch/click
-    const unlock = () => { Sound.unlock(); };
-    document.addEventListener('pointerdown', unlock, { once: true });
-    document.addEventListener('keydown', unlock, { once: true });
+    layoutApp();
+    // Unlock audio on real user gestures (iOS wants touchend/click), and keep
+    // trying until the context is actually running.
+    const unlock = () => { if (!Sound.isRunning()) Sound.unlock(); };
+    ['touchend', 'click', 'pointerup', 'keydown'].forEach(n => document.addEventListener(n, unlock, { passive: true }));
     ensureLoop(); // clouds drift even when parked
     setTimeout(() => toast('Push the bus with your finger to drive! 👉🚌', 3500), 1200);
 
