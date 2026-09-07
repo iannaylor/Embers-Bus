@@ -90,6 +90,7 @@
         Store.setColor(c);
         applyColor(c);
         Sound.tap();
+        setTimeout(() => $('#color-sheet').classList.add('hidden'), 180);
       });
       wrap.appendChild(b);
     });
@@ -867,6 +868,7 @@
     const song = Sound.songs().find(s => s.id === id);
     refreshSongList();
     toast(`🎵 ${song ? song.name : 'Music'}`);
+    setTimeout(() => $('#music-sheet').classList.add('hidden'), 180);
   }
   function stopMusic() {
     Sound.melodyStop();
@@ -1282,8 +1284,13 @@
       app.style.transformOrigin = '0 0';
       let base = '';
       if (portrait) {
-        app.style.width = window.innerHeight + 'px';
-        app.style.height = window.innerWidth + 'px';
+        // Size from the real screen: iOS home-screen apps report innerHeight
+        // too small on launch, which left bands of empty space.
+        const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+        const H = Math.max(window.innerHeight, document.documentElement.clientHeight, standalone && screen.height > screen.width ? screen.height : 0);
+        const W = Math.max(window.innerWidth, document.documentElement.clientWidth, standalone && screen.height > screen.width ? screen.width : 0);
+        app.style.width = H + 'px';
+        app.style.height = W + 'px';
         base = 'rotate(90deg) translateY(-100%)';
       } else {
         app.style.width = '';

@@ -48,10 +48,7 @@ button:active { transform: scale(0.94); }
    The phone's status bar (clock) then runs down the game's LEFT edge and the
    home indicator along its RIGHT edge, so keep the scenes clear of both. */
 #app.rotated { inset: auto; left: 0; top: 0; }
-#app.rotated .scene {
-  left: max(12px, env(safe-area-inset-top, 0px));
-  right: max(0px, env(safe-area-inset-bottom, 0px));
-}
+/* The scenery fills the whole screen; only the buttons keep clear (below). */
 /* Belt and braces: whatever the phone reports, keep the buttons well away
    from the clock (game left edge) and the home bar (game right edge). */
 #app.rotated .toolbar.side { left: 64px; }
