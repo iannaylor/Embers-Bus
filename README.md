@@ -41,18 +41,24 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 Everything (people, seats, seat belts, bus colour) is remembered on the device,
 so the bus is exactly how she left it next time.
 
-## Running it
+## Playing it
 
-**Easiest:** open `index.html` in a browser. Everything works from a plain file.
+**Play it here:** https://iannaylor.github.io/Embers-Bus/
 
-**On an iPad or phone:** the page needs to be served over HTTP so the device can
-reach it. Either:
+Every push to the repository runs the GitHub Actions workflow in
+`.github/workflows/pages.yml`, which publishes the game to GitHub Pages at that
+address. On an iPad or iPhone open it in Safari and use *Share → Add to Home
+Screen* to get a full-screen app icon.
 
-1. Turn on GitHub Pages for this repository (Settings → Pages → deploy from the
-   main branch, root folder). The game is then at
-   `https://<your-user>.github.io/Embers-Bus/`. Open it in Safari and use
-   *Share → Add to Home Screen* to get a full-screen app icon.
-2. Or serve it from a laptop on the same Wi-Fi:
+If the workflow ever fails with a Pages permission error, enable Pages once by
+hand: repository *Settings → Pages → Source: GitHub Actions*, then re-run the
+workflow.
+
+Other ways to run it:
+
+1. Open `index.html` straight from the folder in a browser. Everything works
+   from a plain file.
+2. Serve it from a laptop on the same Wi-Fi:
 
    ```sh
    cd Embers-Bus
