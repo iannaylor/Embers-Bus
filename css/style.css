@@ -61,6 +61,7 @@ button:active { transform: scale(0.94); }
   touch-action: none;
 }
 #outside.night { background: var(--sky-night); }
+#outside { perspective: 1400px; }
 
 .sky { position: absolute; inset: 0 0 42% 0; overflow: hidden; }
 
@@ -170,6 +171,12 @@ button:active { transform: scale(0.94); }
   transition: left 0.6s ease-in-out;
 }
 #bus { width: 100%; height: auto; display: block; overflow: visible; }
+#bus-turn { transition: transform 0.36s ease-in; transform-style: preserve-3d; }
+#bus-turn.snap { transition: none; }
+#bus-wrap.facing-left { left: 28%; }
+.door-side-window { display: none; }
+.facing-left .door-side-window { display: block; }
+.facing-left #door, .facing-left #tap-door { display: none; }
 
 #bus-wrap.honk { animation: honk 0.5s; }
 @keyframes honk {
@@ -348,6 +355,7 @@ button:active { transform: scale(0.94); }
 .big.go.driving { background: #ff6b6b; box-shadow: 0 5px 0 #b82525, 0 8px 16px rgba(0,0,0,0.22); }
 .big.stop { background: #ffb27a; box-shadow: 0 5px 0 #c9601a, 0 8px 16px rgba(0,0,0,0.22); }
 .big.stop.active { outline: 4px solid #ff7a1a; }
+.big.turn { background: #c9b6ff; box-shadow: 0 5px 0 #7a5fd1, 0 8px 16px rgba(0,0,0,0.22); }
 .big.close { background: #8ee0ff; box-shadow: 0 5px 0 #3fa6cc, 0 8px 16px rgba(0,0,0,0.22); }
 .big.done { background: #7ee787; box-shadow: 0 5px 0 #2e9e3c, 0 8px 16px rgba(0,0,0,0.22); }
 .big.cancel { background: #ffb3b3; box-shadow: 0 5px 0 #c94a4a, 0 8px 16px rgba(0,0,0,0.22); }
@@ -548,6 +556,15 @@ button:active { transform: scale(0.94); }
 .seat.over { outline: 4px dashed #ff7a1a; outline-offset: 2px; border-radius: 12px; }
 .seat.driver .cushion { background: linear-gradient(180deg, #7a7a8a, #4a4a5a); }
 .seat.driver .headrest { background: linear-gradient(180deg, #3a3a4a, #222); box-shadow: 0 3px 0 #111; }
+.seat-label {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: clamp(11px, 3cqh, 15px); color: #fff; opacity: 0.9;
+  background: rgba(0,0,0,0.35); padding: 2px 8px; border-radius: 10px;
+  pointer-events: none; z-index: 0;
+}
+.seat:not(.empty) .seat-label { display: none; }
+.seat.driver.empty .cushion { animation: seat-pulse 1.6s ease-in-out infinite; }
+@keyframes seat-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
 .steering {
   height: 62%; aspect-ratio: 1; border-radius: 50%;
   border: 5px solid #111; background: radial-gradient(circle, #777 28%, #3a3a4a 30%);

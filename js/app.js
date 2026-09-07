@@ -477,6 +477,9 @@
   function svgFace(person, cx, cy, r, key) {
     const g = document.createElementNS(SVG_NS, 'g');
     g.setAttribute('class', 'win-face');
+    // When the bus drawing is mirrored, un-mirror the face so photos read correctly.
+    const inner = document.createElementNS(SVG_NS, 'g');
+    if (facing.left) inner.setAttribute('transform', `translate(${cx * 2} 0) scale(-1 1)`);
     // body
     const body = document.createElementNS(SVG_NS, 'rect');
     body.setAttribute('x', cx - r * 0.9);
@@ -500,7 +503,8 @@
       img.setAttribute('width', r * 2); img.setAttribute('height', r * 2);
       img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
       img.setAttribute('clip-path', `url(#fc-${key})`);
-      g.appendChild(img);
+      inner.appendChild(img);
+      g.appendChild(inner);
     } else {
       const bg = document.createElementNS(SVG_NS, 'circle');
       bg.setAttribute('cx', cx); bg.setAttribute('cy', cy); bg.setAttribute('r', r);
@@ -511,7 +515,8 @@
       t.setAttribute('text-anchor', 'middle');
       t.setAttribute('font-size', r * 1.4);
       t.textContent = person.emoji || '🙂';
-      g.appendChild(t);
+      inner.appendChild(t);
+      g.appendChild(inner);
     }
     const ring = document.createElementNS(SVG_NS, 'circle');
     ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', r);
@@ -523,16 +528,22 @@
   function renderBusFaces() {
     const wins = $('#win-faces');
     wins.innerHTML = '';
+    // Row 1 is nearest the front (the windscreen end). Facing right we look at
+    // the door side of the bus (seats a = window, b = aisle); turned round we
+    // see the other side (d = window, c = aisle).
+    const sideSeats = facing.left ? ['d', 'c'] : ['a', 'b'];
     for (let r = 1; r <= ROWS; r++) {
-      const seated = SEAT_LETTERS.map(l => Store.occupant(`r${r}-${l}`)).filter(Boolean).slice(0, 2);
+      const winIndex = ROWS - r;
+      const x = WINDOW_X[winIndex];
       const g = document.createElementNS(SVG_NS, 'g');
-      g.setAttribute('clip-path', `url(#clip-win${r})`);
-      seated.forEach((pid, i) => {
-        const person = Store.person(pid);
-        if (!person) return;
-        const cx = WINDOW_X[r - 1] + (seated.length === 1 ? 43 : 24 + i * 40);
-        g.appendChild(svgFace(person, cx, 150, 19, `w${r}${i}`));
-      });
+      g.setAttribute('clip-path', `url(#clip-win${winIndex + 1})`);
+      const windowPid = Store.occupant(`r${r}-${sideSeats[0]}`);
+      const aislePid = Store.occupant(`r${r}-${sideSeats[1]}`);
+      const aisle = aislePid && Store.person(aislePid);
+      const window_ = windowPid && Store.person(windowPid);
+      // aisle-seat person sits a little further back, drawn first (behind)
+      if (aisle) g.appendChild(svgFace(aisle, x + (window_ ? 58 : 43), 146, 16, `w${r}b`));
+      if (window_) g.appendChild(svgFace(window_, x + (aisle ? 32 : 43), 150, 19, `w${r}a`));
       wins.appendChild(g);
     }
     const drv = $('#driver-face');
@@ -545,6 +556,36 @@
       g.appendChild(svgFace(driver, 568, 158, 22, 'drv'));
       drv.appendChild(g);
     }
+    // keep the destination sign readable when mirrored
+    const sign = $('#sign-text');
+    sign.setAttribute('transform', facing.left ? 'translate(370 0) scale(-1 1)' : '');
+  }
+
+  /* ---------------------------------------------------- turning around */
+  const facing = { left: false, turning: false };
+  const busTurn = $('#bus-turn');
+
+  function turnAround() {
+    if (facing.turning) return;
+    facing.turning = true;
+    stopDriving(true);
+    if (crossing.active) endCrossing();
+    if (wash.on) setWash(false);
+    Sound.whoosh();
+    busTurn.style.transform = 'rotateY(90deg)';
+    setTimeout(() => {
+      facing.left = !facing.left;
+      busWrap.classList.toggle('facing-left', facing.left);
+      $('#bus-content').setAttribute('transform', facing.left ? 'translate(640 0) scale(-1 1)' : '');
+      renderBusFaces();
+      busTurn.classList.add('snap');
+      busTurn.style.transform = 'rotateY(-90deg)';
+      void busTurn.offsetWidth;
+      busTurn.classList.remove('snap');
+      busTurn.style.transform = 'rotateY(0deg)';
+      setTimeout(() => { facing.turning = false; }, 400);
+      toast(facing.left ? 'Now you can see the other side 👀' : 'Back to the door side 🚪');
+    }, 370);
   }
 
   /* ========================================================================
@@ -565,7 +606,7 @@
     if (!drive.on && drive.speed < 0.01) drive.speed = 0;
 
     const px = drive.speed * 440 * dt;
-    drive.offset += px;
+    drive.offset += facing.left ? -px : px;
     drive.cloud += dt * 6 + px * 0.15;
     drive.wheel += px * 1.4;
 
@@ -738,6 +779,7 @@
     sponge.style.left = (clientX - rect.left) + 'px';
     sponge.style.top = (clientY - rect.top) + 'px';
     const p = svgPoint(clientX, clientY);
+    if (facing.left) p.x = 640 - p.x; // dirt lives inside the mirrored group
     const onBus = p.x > 30 && p.x < 610 && p.y > 50 && p.y < 320;
     if (!onBus) return;
     const now = performance.now();
@@ -802,10 +844,7 @@
     crossing.active = true;
     $('#btn-busstop').classList.add('active');
     // Put the crossing just in front of the bus.
-    const sr = outside.getBoundingClientRect();
-    const br = busWrap.getBoundingClientRect();
-    const left = clamp(br.right - sr.left + 20, 0, sr.width - 100);
-    crossingEl.style.left = left + 'px';
+    placeCrossing();
     crossingEl.classList.remove('hidden');
 
     let people = Store.people().filter(p => !Store.seatOf(p.id));
@@ -815,6 +854,13 @@
     crossing.queue = people.slice(0, 5);
     toast('Bus stop! Help people cross the road 🚸');
     nextPed();
+  }
+
+  function placeCrossing() {
+    const sr = outside.getBoundingClientRect();
+    const br = busWrap.getBoundingClientRect();
+    const left = facing.left ? br.left - sr.left - 20 - 90 : br.right - sr.left + 20;
+    crossingEl.style.left = clamp(left, 0, sr.width - 100) + 'px';
   }
 
   function nextPed() {
@@ -951,6 +997,7 @@
       if (crossing.active) { endCrossing(); toast('Bus stop finished'); }
       else startCrossing();
     });
+    $('#btn-turn').addEventListener('click', turnAround);
     $('#btn-wipers').addEventListener('click', toggleWipers);
     $('#btn-lights').addEventListener('click', toggleLights);
     $('#btn-music').addEventListener('click', toggleMusic);
@@ -970,6 +1017,7 @@
         case 'w': case 'W': toggleWipers(); break;
         case 'l': case 'L': toggleLights(); break;
         case 'm': case 'M': toggleMusic(); break;
+        case 't': case 'T': turnAround(); break;
         case 'Enter': openDoor(); break;
         default: return;
       }
@@ -983,11 +1031,7 @@
       }
     });
     window.addEventListener('resize', () => {
-      if (crossing.active) {
-        const sr = outside.getBoundingClientRect();
-        const br = busWrap.getBoundingClientRect();
-        crossingEl.style.left = clamp(br.right - sr.left + 20, 0, sr.width - 100) + 'px';
-      }
+      if (crossing.active) placeCrossing();
     });
   }
 

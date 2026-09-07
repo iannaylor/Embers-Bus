@@ -155,6 +155,13 @@
       noiseBurst(t, 0.5, 0.1, 'bandpass', 3000, 2);
     },
 
+    whoosh() {
+      if (!ensure()) return;
+      const t = ctx.currentTime;
+      noiseBurst(t, 0.7, 0.2, 'bandpass', 600, 0.7);
+      tone(200, 'sine', t, 0.7, 0.08, { glideTo: 90, attack: 0.1 });
+    },
+
     lightsOn() {
       if (!ensure()) return;
       const t = ctx.currentTime;

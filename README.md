@@ -23,11 +23,16 @@ install and no build step: it is one HTML page with plain CSS and JavaScript.
 - 💡 **Lights**: night falls and the headlights come on.
 - 🎵 **Music**: "The Wheels on the Bus" plays on a little synth.
 - 🎨 **Colour**: choose from twelve bus colours.
+- 🔄 **Turn**: the bus spins round so you can see the people sitting on the
+  other side. Facing right you see the door side (the left-hand pair of seats
+  in each row); facing left you see the right-hand pair. Row 1 is nearest the
+  front. The driver shows in the windscreen either way.
 
 **Inside the bus**
 - A top-down plan of the bus: door at the front left, driver at the front
   right, and four rows of two-plus-two seats. Drag a person from the tray onto
-  any seat (including the driver's seat!).
+  any seat. Drop someone on the seat marked **Driver** (front right, by the
+  steering wheel) to make them the driver.
 - Tap a seated person to click the seat belt on. Tap again to take it off.
 - Drag a person off a seat to let them off the bus.
 - Close the door to go back outside. The people you seated appear in the bus
@@ -77,7 +82,7 @@ worker.
   needs the first tap before it will make any noise, and the ringer switch
   must not be on silent.
 - Keyboard on a laptop: `→` go, `←` or space stop, `H` horn, `W` wipers,
-  `L` lights, `M` music, `Enter` open the door, `Esc` close it.
+  `L` lights, `M` music, `T` turn round, `Enter` open the door, `Esc` close it.
 - Photos are stored in the browser's localStorage. Clearing site data will
   remove them, so keep the originals.
 
