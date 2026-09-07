@@ -16,32 +16,46 @@
   let muted = false;
   let unlockAudioEl = null;   // silent <audio> that puts iOS into "playback" mode (beats the ringer switch)
 
-  // 0.1 s of silence as a WAV data URL (44-byte header + 800 zero samples).
+  // 0.25 s of 16-bit mono silence as a WAV data URL (the format every browser plays).
   function silentWav() {
-    const samples = 800, rate = 8000;
-    const buf = new ArrayBuffer(44 + samples);
+    const rate = 22050, samples = Math.round(rate * 0.25), bytes = samples * 2;
+    const buf = new ArrayBuffer(44 + bytes);
     const v = new DataView(buf);
     const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-    str(0, 'RIFF'); v.setUint32(4, 36 + samples, true); str(8, 'WAVE');
+    str(0, 'RIFF'); v.setUint32(4, 36 + bytes, true); str(8, 'WAVE');
     str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-    v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
-    str(36, 'data'); v.setUint32(40, samples, true);
-    for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, bytes, true);
     let bin = '';
-    new Uint8Array(buf).forEach(b => { bin += String.fromCharCode(b); });
+    const u8 = new Uint8Array(buf);
+    for (let i = 0; i < u8.length; i += 4096) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 4096));
     return 'data:audio/wav;base64,' + btoa(bin);
   }
 
+  let unlockAttempts = 0;
+  function createContext() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = muted ? 0 : 0.9;
+    master.connect(ctx.destination);
+    noise = null;
+    engine = null;
+    ctx.onstatechange = () => { Sound.onState && Sound.onState(ctx.state); };
+    return ctx;
+  }
+  /** Throw the context away (iOS home-screen apps can leave it stuck "interrupted"). */
+  function resetContext() {
+    if (!ctx) return;
+    try { ctx.close(); } catch (e) { /* ignore */ }
+    ctx = null; master = null; noise = null; engine = null;
+    melodyNodes = [];
+  }
+
   function ensure() {
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      ctx = new AC();
-      master = ctx.createGain();
-      master.gain.value = 0.9;
-      master.connect(ctx.destination);
-    }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (!ctx && !createContext()) return null;
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
     return ctx;
   }
 
@@ -108,8 +122,15 @@
      * ringer switch on silent. Safe to call repeatedly.
      */
     unlock() {
+      // A context that stays stuck after a couple of real taps gets rebuilt.
+      if (ctx && ctx.state !== 'running') {
+        unlockAttempts++;
+        if (unlockAttempts >= 2 || ctx.state === 'closed' || ctx.state === 'interrupted') { resetContext(); unlockAttempts = 0; }
+      }
       const c = ensure();
-      if (c && c.state !== 'running') c.resume().catch(() => {});
+      if (c && c.state !== 'running') {
+        c.resume().then(() => { if (c.state === 'running') unlockAttempts = 0; }).catch(() => {});
+      }
       try {
         if (!unlockAudioEl) {
           unlockAudioEl = document.createElement('audio');
@@ -118,6 +139,8 @@
           unlockAudioEl.loop = true;
           unlockAudioEl.volume = 0.01;
           unlockAudioEl.src = silentWav();
+          unlockAudioEl.style.display = 'none';
+          document.body.appendChild(unlockAudioEl);
         }
         if (unlockAudioEl.paused) unlockAudioEl.play().catch(() => {});
       } catch (e) { /* ignore */ }
@@ -132,6 +155,8 @@
       }
     },
     isRunning() { return !!ctx && ctx.state === 'running'; },
+    state() { return ctx ? ctx.state : 'none'; },
+    onState: null,
 
     setMuted(m) {
       muted = m;

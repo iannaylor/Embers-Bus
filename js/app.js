@@ -837,11 +837,11 @@
     }
   }
 
+  /** Pointer position in the bus drawing's own coordinates (viewBox 640 x 340). */
   function svgPoint(clientX, clientY) {
-    const pt = busSvg.createSVGPoint();
-    pt.x = clientX; pt.y = clientY;
-    const ctm = busSvg.getScreenCTM();
-    return ctm ? pt.matrixTransform(ctm.inverse()) : pt;
+    const lp = toLocal(clientX, clientY);
+    const r = localRect(busSvg);
+    return { x: (lp.x - r.left) / r.width * 640, y: (lp.y - r.top) / r.height * 340 };
   }
 
   function washAt(clientX, clientY) {
@@ -1166,6 +1166,19 @@
       .catch(() => { /* no shared file yet, that is fine */ });
   }
 
+  /** Grown-ups: open the game with ?sound on the address to see the audio state. */
+  let badge = null;
+  function soundBadge() {
+    if (!/[?&]sound\b/.test(location.search)) return;
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.style.cssText = 'position:absolute;left:8px;top:8px;z-index:999;background:#000;color:#0f0;font:bold 14px monospace;padding:6px 10px;border-radius:8px;pointer-events:none;';
+      app.appendChild(badge);
+    }
+    const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
+    badge.textContent = `audio: ${Sound.state()} · ${standalone ? 'home screen' : 'browser'}`;
+  }
+
   function init() {
     Store.load();
     loadSharedPeople();
@@ -1229,8 +1242,12 @@
     layoutApp();
     // Unlock audio on real user gestures (iOS wants touchend/click), and keep
     // trying until the context is actually running.
-    const unlock = () => { if (!Sound.isRunning()) Sound.unlock(); };
-    ['touchend', 'click', 'pointerup', 'keydown'].forEach(n => document.addEventListener(n, unlock, { passive: true }));
+    const unlock = () => { if (!Sound.isRunning()) Sound.unlock(); soundBadge(); };
+    ['touchstart', 'touchend', 'click', 'pointerup', 'keydown'].forEach(n => document.addEventListener(n, unlock, { passive: true }));
+    // Coming back from the background (home-screen apps especially) can leave audio stuck.
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(soundBadge, 100); });
+    window.addEventListener('pageshow', () => setTimeout(soundBadge, 100));
+    Sound.onState = soundBadge;
     ensureLoop(); // clouds drift even when parked
     setTimeout(() => toast('Push the bus with your finger to drive! 👉🚌', 3500), 1200);
 

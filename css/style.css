@@ -43,7 +43,7 @@ button:active { transform: scale(0.94); }
 
 .hidden { display: none !important; }
 
-#app { position: fixed; inset: 0; transform-origin: 0 0; }
+#app { position: fixed; inset: 0; transform-origin: 0 0; container: app / size; }
 /* Phone held upright: JS sizes #app to the screen turned sideways and rotates it. */
 #app.rotated { inset: auto; left: 0; top: 0; }
 
@@ -337,6 +337,7 @@ button:active { transform: scale(0.94); }
 .toolbar.side {
   right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top));
   flex-direction: column;
+  z-index: 11; /* above the bottom band */
 }
 .toolbar.bottom {
   position: relative; flex: 0 0 auto;
@@ -689,12 +690,22 @@ button:active { transform: scale(0.94); }
 .zoom-row input[type="range"] { flex: 1; height: 40px; accent-color: var(--accent); }
 
 /* ============================================================ small screens */
-@media (max-height: 520px) {
-  .toolbar.bottom { padding-top: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); gap: 8px; }
-  .big { height: 54px; min-width: 72px; font-size: 22px; padding: 2px 8px; }
-  .big span { font-size: 12px; }
-  .tool { width: 50px; height: 50px; font-size: 24px; }
-  .toolbar.side { gap: 6px; }
+@container app (max-height: 520px) {
+  /* One slim strip of icon-only buttons along the bottom: the five round
+     tools on the left, the five big actions on the right. */
+  .toolbar.bottom {
+    justify-content: flex-end; gap: 6px;
+    padding: 4px max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) 8px;
+  }
+  #outside .big { height: 48px; min-width: 58px; font-size: 26px; padding: 0 6px; border-radius: 16px; }
+  #outside .big span { display: none; }
+  .toolbar.side {
+    top: auto; right: auto;
+    left: max(8px, env(safe-area-inset-left)); bottom: max(6px, env(safe-area-inset-bottom));
+    flex-direction: row; gap: 6px;
+  }
+  .tool { width: 44px; height: 44px; font-size: 22px; box-shadow: 0 3px 0 #b9b9c8, 0 4px 10px rgba(0,0,0,0.2); }
+  .tool::after { display: none; }
   .inside-header { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 4px; }
   .inside-title { font-size: 20px; }
   .seat .name { display: none; }
@@ -703,28 +714,82 @@ button:active { transform: scale(0.94); }
   .row { gap: 4px; }
   .front { min-height: 48px; }
 }
-/* Short landscape screens (phones on their side): tray goes down the right edge. */
-@media (max-height: 520px) and (orientation: landscape) {
+/* Short, wide screens (phones on their side, or held upright with the game
+   rotated): the cabin becomes a sideways bus plan, front on the right, rows in
+   a line across the screen, people down the right edge, no header. */
+@container app (max-height: 520px) and (min-aspect-ratio: 1/1) {
+  .inside-header {
+    position: absolute; top: 6px; right: max(6px, env(safe-area-inset-right));
+    padding: 0; background: none; border: 0; z-index: 6;
+  }
+  .inside-title { display: none; }
+  #inside .big.close { height: 46px; min-width: 46px; padding: 0 8px; font-size: 24px; border-radius: 14px; }
+  #inside .big.close span { display: none; }
+
   .inside-main { flex-direction: row; }
+  .cabin {
+    padding: 6px 6px 8px 8px;
+    --seatw: min(calc((100cqh - 52px) / 4.6), calc((100cqw - 150px) / 5.4));
+    --face: min(clamp(30px, 12cqh, 64px), calc(var(--seatw) / 1.45));
+  }
+  .bus-plan {
+    flex-direction: row-reverse; gap: 1.4cqw;
+    height: 100%; width: auto;
+    padding: 14px 1.2cqw;
+    border-radius: 22px 46px 46px 22px;
+    border-width: 7px;
+  }
+  .bus-plan::before, .bus-plan::after {
+    top: auto; bottom: auto; left: 8%; right: 16%; width: auto; height: 8px;
+    background: repeating-linear-gradient(90deg, #bfe8ff 0 34px, var(--bus-dark) 34px 44px);
+  }
+  .bus-plan::before { top: -9px; }
+  .bus-plan::after { bottom: -9px; }
+  .windscreen { height: auto; width: 4cqw; min-width: 14px; min-height: 0; border-radius: 6px 30px 30px 6px; }
+  .rear-window { height: auto; width: 3cqw; min-width: 10px; min-height: 0; border-radius: 18px 6px 6px 18px; }
+  .front {
+    height: auto; min-height: 0; width: var(--seatw); min-width: 0;
+    grid-template-columns: 1fr; grid-template-rows: var(--seatw) 1fr var(--seatw);
+    gap: 6px;
+  }
+  .bus-door { font-size: clamp(16px, 5cqh, 26px); }
+  .dash { flex-direction: column; justify-content: flex-end; padding: 0 0 8% 0; }
+  .steering { height: auto; width: 60%; }
+  .rows {
+    grid-template-rows: none; grid-template-columns: repeat(4, var(--seatw));
+    grid-auto-flow: column; direction: rtl; gap: 1.2cqw; min-height: 0;
+  }
+  .rows > * { direction: ltr; }
+  .row {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--seatw) var(--seatw) calc(var(--seatw) * 0.5) var(--seatw) var(--seatw);
+    gap: 5px; align-content: center; justify-content: stretch;
+  }
+  .seat { width: 100%; height: var(--seatw); }
+  .cushion { inset: 0 0 0 22%; border-radius: 6px 12px 12px 6px; }
+  .headrest { left: 0; right: auto; top: 6%; bottom: 6%; width: 26%; height: auto; box-shadow: 3px 0 0 #14245c; }
+  .seat.driver .headrest { box-shadow: 3px 0 0 #111; }
+  .seat .person { max-width: calc(var(--face) * 1.5); }
+
   .tray-wrap {
-    --face: 44px;
-    flex-direction: column; width: 128px;
+    --face: 42px;
+    flex-direction: column; width: 112px;
     border-top: 0; border-left: 5px solid var(--bus-dark);
-    padding: 6px 6px max(6px, env(safe-area-inset-bottom));
+    padding: 58px 4px max(6px, env(safe-area-inset-bottom));
   }
   .tray {
-    flex-direction: column; align-items: center;
+    flex-direction: column; align-items: center; gap: 6px;
     overflow-x: hidden; overflow-y: auto;
-    min-height: 0; width: 100%;
+    min-height: 0; width: 100%; padding: 4px 0;
     touch-action: pan-y;
   }
   .tray .person { touch-action: pan-y; }
-  .tray-actions { flex-direction: row; }
-}
-@media (max-width: 480px) {
-  .toolbar.bottom { gap: 6px; padding-left: 6px; padding-right: 6px; }
-  .toolbar.bottom .big { min-width: 62px; padding: 4px 4px; font-size: 24px; height: 66px; }
-  .toolbar.bottom .big span { font-size: 11px; }
+  .tray .person .name { font-size: 11px; }
+  .tray-actions { flex-direction: row; gap: 6px; }
+  .tray-actions .tool { width: 40px; height: 40px; font-size: 20px; }
+  /* messages sit along the bottom edge inside the bus so they never hide a seat */
+  #inside.active ~ .toast { top: auto; bottom: 6px; font-size: 16px; padding: 6px 14px; transform: translate(-50%, 30px); }
+  #inside.active ~ .toast.show { transform: translate(-50%, 0); }
 }
 @media (max-width: 640px) {
   .row { gap: 4px; }
