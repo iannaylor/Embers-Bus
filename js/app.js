@@ -808,6 +808,36 @@
     ensureLoop();
   }
 
+  /* ------------------------------------------------------- jump & skid */
+  const stunt = { busy: false };
+  function playStunt(cls, ms) {
+    busWrap.classList.remove('jump', 'skid');
+    void busWrap.offsetWidth;
+    busWrap.classList.add(cls);
+    stunt.busy = true;
+    setTimeout(() => { busWrap.classList.remove(cls); stunt.busy = false; }, ms);
+  }
+  function jump() {
+    if (stunt.busy || facing.turning) return;
+    Sound.wee();
+    playStunt('jump', 760);
+    setTimeout(() => Sound.thud(), 660);
+  }
+  function skid() {
+    if (stunt.busy || facing.turning) return;
+    Sound.skid();
+    playStunt('skid', 620);
+    if (drive.on) stopDriving(true);
+    // dust from the wheels
+    const sr = localRect(stage);
+    [150, 500].forEach(wx => {
+      const r = localRect(busSvg);
+      const x = r.left - sr.left + (facing.left ? 640 - wx : wx) / 640 * r.width;
+      const y = r.top - sr.top + 300 / 340 * r.height;
+      for (let i = 0; i < 4; i++) setTimeout(() => spawnBubble(x + (Math.random() - 0.5) * 40, y, 'dust'), i * 60);
+    });
+  }
+
   /* ------------------------------------------------------------- dirt */
   const MAX_DIRT = 12;
   function addDirt() {
@@ -989,9 +1019,9 @@
     }
   }
 
-  function spawnBubble(x, y) {
+  function spawnBubble(x, y, kind) {
     const b = document.createElement('div');
-    b.className = 'bubble';
+    b.className = 'bubble' + (kind ? ' ' + kind : '');
     const s = 16 + Math.random() * 22;
     b.style.width = b.style.height = s + 'px';
     b.style.left = x + 'px'; b.style.top = y + 'px';
@@ -1144,8 +1174,9 @@
       const sx = start.x, sy = start.y;
       let moved = false;
       const move = ev => {
-        const dx = toLocal(ev.clientX, ev.clientY).x - sx;
-        if (Math.abs(dx) > 10) moved = true;
+        const lp = toLocal(ev.clientX, ev.clientY);
+        const dx = lp.x - sx;
+        if (Math.abs(dx) > 10 || Math.abs(lp.y - sy) > 10) moved = true;
         if (onBus && !facing.turning) {
           busTurn.style.transform = `translateX(${clamp(dx * 0.45, -60, 60)}px)`;
         }
@@ -1156,7 +1187,9 @@
         const dx = lp.x - sx, dy = lp.y - sy;
         if (onBus && !facing.turning) busTurn.style.transform = '';
         if (moved) lastDragEnd = performance.now();
-        if (crossing.active && crossing.current) {
+        if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+          if (dy < 0) jump(); else skid();
+        } else if (crossing.active && crossing.current) {
           // Someone is waiting or crossing: swipes must not move or turn the bus.
           if (moved) toast(`Help ${crossing.current.name || 'your friend'} across first ⬆️`);
         } else if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
@@ -1225,6 +1258,8 @@
       switch (e.key) {
         case 'ArrowRight': goDirection('right'); break;
         case 'ArrowLeft': goDirection('left'); break;
+        case 'ArrowUp': jump(); break;
+        case 'ArrowDown': skid(); break;
         case ' ': stopDriving(); break;
         case 'h': case 'H': honk(); break;
         case 'w': case 'W': toggleWipers(); break;

@@ -218,6 +218,37 @@ button:active { transform: scale(0.94); }
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
+/* swipe up: a little hop */
+#bus-wrap.jump #bus { animation: jump 0.75s cubic-bezier(0.3, 0, 0.6, 1); }
+@keyframes jump {
+  0% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-24%) rotate(-3deg); }
+  50% { transform: translateY(-26%) rotate(0); }
+  70% { transform: translateY(-20%) rotate(2deg); }
+  90% { transform: translateY(1.5%) rotate(0); }
+  100% { transform: translateY(0); }
+}
+#bus-wrap.jump .shadow { animation: shadow-jump 0.75s; }
+@keyframes shadow-jump { 30%, 70% { transform: scaleX(0.75); opacity: 0.5; } }
+/* swipe down: a wobbly skid */
+#bus-wrap.skid #bus { animation: skid 0.6s ease-out; }
+@keyframes skid {
+  0% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-3%) rotate(-2.5deg) skewX(4deg); }
+  40% { transform: translateX(2%) rotate(1.5deg) skewX(-3deg); }
+  60% { transform: translateX(-1.2%) rotate(-1deg) skewX(2deg); }
+  80% { transform: translateX(0.6%) rotate(0.5deg); }
+  100% { transform: translateX(0) rotate(0); }
+}
+.bubble.dust {
+  background: radial-gradient(circle at 40% 40%, rgba(200,190,170,0.95), rgba(160,150,130,0.6) 60%, rgba(120,110,95,0.3));
+  border-color: rgba(170,160,140,0.6);
+  animation: dust 0.9s ease-out forwards;
+}
+@keyframes dust {
+  0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.5); }
+  100% { opacity: 0; transform: translate(-50%, -90px) scale(1.8); }
+}
 
 .bus-body { fill: var(--bus-color); stroke: #3a2f00; stroke-width: 4; stroke-linejoin: round; }
 .bus-skirt { fill: var(--bus-dark); }

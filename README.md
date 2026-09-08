@@ -102,7 +102,7 @@ worker.
 - On a phone held upright the game turns itself sideways so the bus is always
   shown in landscape, nice and big.
 - Keyboard on a laptop: `→` drive right, `←` drive left (turning if needed), space stop, `H` horn, `W` wipers,
-  `L` lights, `M` music, `T` turn round, `Enter` open the door, `Esc` close it.
+  `L` lights, `M` music, `T` turn round, `↑` jump, `↓` skid, `Enter` open the door, `Esc` close it.
 - Photos are stored in the browser's localStorage. Clearing site data will
   remove them, so keep the originals.
 

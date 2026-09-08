@@ -235,6 +235,30 @@
       tone(200, 'sine', t, 0.7, 0.08, { glideTo: 90, attack: 0.1 });
     },
 
+    /** "Wheee!" for a jump: a swoop up, then a little thump on landing. */
+    wee() {
+      if (!ensure()) return;
+      const t = ctx.currentTime;
+      tone(380, 'sine', t, 0.32, 0.32, { glideTo: 1000, attack: 0.02 });
+      tone(1000, 'sine', t + 0.32, 0.28, 0.28, { glideTo: 520, attack: 0.01 });
+      tone(760, 'triangle', t, 0.3, 0.1, { glideTo: 1500, attack: 0.02 });
+    },
+    thud() {
+      if (!ensure()) return;
+      const t = ctx.currentTime;
+      tone(90, 'sine', t, 0.18, 0.5, { glideTo: 45, attack: 0.005 });
+      noiseBurst(t, 0.12, 0.35, 'lowpass', 500, 0.7);
+    },
+    /** Tyre screech for a skid. */
+    skid() {
+      if (!ensure()) return;
+      const t = ctx.currentTime;
+      noiseBurst(t, 0.55, 0.32, 'bandpass', 2400, 4);
+      noiseBurst(t + 0.05, 0.45, 0.2, 'bandpass', 1500, 3);
+      tone(1500, 'sawtooth', t, 0.5, 0.1, { glideTo: 800, lowpass: 2500, attack: 0.02 });
+      tone(1900, 'sine', t, 0.4, 0.08, { glideTo: 1300, attack: 0.02 });
+    },
+
     lightsOn() {
       if (!ensure()) return;
       const t = ctx.currentTime;
