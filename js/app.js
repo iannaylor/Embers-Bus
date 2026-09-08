@@ -31,9 +31,12 @@
     if (!/^en/i.test(v.lang)) return -1;
     let score = 0;
     const name = v.name || '';
-    if (/premium/i.test(name)) score += 30;
-    else if (/enhanced/i.test(name)) score += 20;
-    else if (/natural|neural|online/i.test(name)) score += 15; // Edge / Android Google voices
+    const id = (v.voiceURI || '') + ' ' + name; // Apple ids say compact / enhanced / premium outright
+    if (/premium/i.test(id)) score += 40;
+    else if (/enhanced/i.test(id)) score += 20;
+    else if (/siri/i.test(id)) score += 18;
+    else if (/natural|neural|online|wavenet|studio/i.test(id)) score += 15; // Edge / Google voices
+    if (/compact/i.test(id)) score -= 10;
     if (/en[-_]GB/i.test(v.lang)) score += 10;
     else if (/en[-_](AU|IE|NZ)/i.test(v.lang)) score += 6;
     if (/kate|serena|stephanie|martha|moira|karen|samantha|ava|allison|libby|sonia|maisie|google uk english female/i.test(name)) score += 5;
@@ -46,7 +49,8 @@
     let best = null, bestScore = -1;
     vs.forEach(v => { const sc = voiceScore(v); if (sc > bestScore) { bestScore = sc; best = v; } });
     speech.voice = best;
-    speech.list = vs.map(v => `${v.name} [${v.lang}]${v === best ? ' *' : ''}`);
+    speech.count = vs.length;
+    speech.list = vs.map(v => `${v.name} [${v.lang}] ${v.voiceURI || ''}${v === best ? ' *' : ''}`);
   }
   if ('speechSynthesis' in window) {
     speechSynthesis.addEventListener('voiceschanged', pickVoice);
@@ -61,6 +65,8 @@
       .trim();
     if (!clean) return;
     try {
+      // iPads sometimes hand over the voice list late: re-check before speaking
+      if (!speech.voice || speechSynthesis.getVoices().length !== speech.count) pickVoice();
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(clean);
       if (speech.voice) { u.voice = speech.voice; u.lang = speech.voice.lang; }
