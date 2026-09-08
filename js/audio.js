@@ -224,39 +224,45 @@
     brake() {
       if (!ensure()) return;
       const t = ctx.currentTime;
-      tone(900, 'sawtooth', t, 0.5, 0.06, { glideTo: 500, lowpass: 2000, attack: 0.05 });
-      noiseBurst(t, 0.5, 0.1, 'bandpass', 3000, 2);
+      tone(900, 'sawtooth', t, 0.5, 0.2, { glideTo: 500, lowpass: 2500, attack: 0.05 });
+      noiseBurst(t, 0.5, 0.45, 'bandpass', 2500, 1);
     },
 
     whoosh() {
       if (!ensure()) return;
       const t = ctx.currentTime;
-      noiseBurst(t, 0.7, 0.2, 'bandpass', 600, 0.7);
-      tone(200, 'sine', t, 0.7, 0.08, { glideTo: 90, attack: 0.1 });
+      noiseBurst(t, 0.7, 0.6, 'bandpass', 700, 0.6);
+      tone(220, 'sawtooth', t, 0.7, 0.15, { glideTo: 90, lowpass: 900, attack: 0.1 });
     },
 
-    /** "Wheee!" for a jump: a swoop up, then a little thump on landing. */
+    /** "Wheee!" for a jump: a busload of kids squealing with delight. */
     wee() {
       if (!ensure()) return;
       const t = ctx.currentTime;
-      tone(380, 'sine', t, 0.32, 0.32, { glideTo: 1000, attack: 0.02 });
-      tone(1000, 'sine', t + 0.32, 0.28, 0.28, { glideTo: 520, attack: 0.01 });
-      tone(760, 'triangle', t, 0.3, 0.1, { glideTo: 1500, attack: 0.02 });
+      // five voices, slightly detuned and staggered, swooping up then down
+      const voices = [[520, 1500, 0], [560, 1650, 0.03], [610, 1420, 0.06], [480, 1700, 0.02], [700, 1900, 0.05]];
+      voices.forEach(([f0, f1, d]) => {
+        tone(f0, 'sawtooth', t + d, 0.38, 0.42, { glideTo: f1, lowpass: 3200, attack: 0.03 });
+        tone(f1, 'sawtooth', t + d + 0.38, 0.32, 0.38, { glideTo: f1 * 0.55, lowpass: 3200, attack: 0.01 });
+        tone(f0 * 2, 'square', t + d, 0.38, 0.12, { glideTo: f1 * 2, lowpass: 4000, attack: 0.03 });
+      });
     },
     thud() {
       if (!ensure()) return;
       const t = ctx.currentTime;
-      tone(90, 'sine', t, 0.18, 0.5, { glideTo: 45, attack: 0.005 });
-      noiseBurst(t, 0.12, 0.35, 'lowpass', 500, 0.7);
+      tone(110, 'sine', t, 0.2, 0.7, { glideTo: 40, attack: 0.005 });
+      tone(160, 'square', t, 0.08, 0.3, { glideTo: 60, lowpass: 400, attack: 0.005 });
+      noiseBurst(t, 0.14, 0.7, 'lowpass', 600, 0.7);
     },
     /** Tyre screech for a skid. */
     skid() {
       if (!ensure()) return;
       const t = ctx.currentTime;
-      noiseBurst(t, 0.55, 0.32, 'bandpass', 2400, 4);
-      noiseBurst(t + 0.05, 0.45, 0.2, 'bandpass', 1500, 3);
-      tone(1500, 'sawtooth', t, 0.5, 0.1, { glideTo: 800, lowpass: 2500, attack: 0.02 });
-      tone(1900, 'sine', t, 0.4, 0.08, { glideTo: 1300, attack: 0.02 });
+      noiseBurst(t, 0.6, 0.9, 'bandpass', 2000, 0.8);
+      noiseBurst(t, 0.5, 0.5, 'highpass', 3000, 0.7);
+      tone(2600, 'sawtooth', t, 0.55, 0.32, { glideTo: 1500, lowpass: 5000, attack: 0.02 });
+      tone(2650, 'sawtooth', t + 0.02, 0.5, 0.25, { glideTo: 1450, lowpass: 5000, attack: 0.02 });
+      tone(3900, 'square', t, 0.45, 0.1, { glideTo: 2200, lowpass: 6000, attack: 0.02 });
     },
 
     lightsOn() {
