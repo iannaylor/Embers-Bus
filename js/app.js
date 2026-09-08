@@ -720,6 +720,10 @@
   /** Drive off towards `dir` ('left' or 'right'), turning round first if needed. */
   function goDirection(dir) {
     if (facing.turning) return;
+    if (crossing.active && crossing.current) {
+      toast(`Help ${crossing.current.name || 'your friend'} across first ⬆️`);
+      return;
+    }
     if (crossing.active && crossing.pedOnRoad) {
       Sound.horn();
       toast(`Wait! ${crossing.current.name || 'Someone'} is still crossing! ✋`);
@@ -980,6 +984,7 @@
         Sound.sparkle();
         toast('Sparkling clean! ✨');
         for (let i = 0; i < 8; i++) setTimeout(spawnSparkle, i * 120);
+        setTimeout(() => { if (wash.on) setWash(false); }, 1200); // job done: put the sponge away
       }
     }
   }
@@ -1151,7 +1156,10 @@
         const dx = lp.x - sx, dy = lp.y - sy;
         if (onBus && !facing.turning) busTurn.style.transform = '';
         if (moved) lastDragEnd = performance.now();
-        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        if (crossing.active && crossing.current) {
+          // Someone is waiting or crossing: swipes must not move or turn the bus.
+          if (moved) toast(`Help ${crossing.current.name || 'your friend'} across first ⬆️`);
+        } else if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
           goDirection(dx > 0 ? 'right' : 'left');
         } else if (!moved && onBus && drive.on) {
           // a tap on the moving bus pulls it up
