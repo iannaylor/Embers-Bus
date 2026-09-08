@@ -26,13 +26,27 @@
 
   /* --- speech: every message is read aloud with the device's own voice --- */
   const speech = { voice: null };
+  /** Rank installed voices: premium/enhanced first, English (UK) preferred, friendly names first. */
+  function voiceScore(v) {
+    if (!/^en/i.test(v.lang)) return -1;
+    let score = 0;
+    const name = v.name || '';
+    if (/premium/i.test(name)) score += 30;
+    else if (/enhanced/i.test(name)) score += 20;
+    else if (/natural|neural|online/i.test(name)) score += 15; // Edge / Android Google voices
+    if (/en[-_]GB/i.test(v.lang)) score += 10;
+    else if (/en[-_](AU|IE|NZ)/i.test(v.lang)) score += 6;
+    if (/kate|serena|stephanie|martha|moira|karen|samantha|ava|allison|libby|sonia|maisie|google uk english female/i.test(name)) score += 5;
+    if (/compact|eloquence|fred|zarvox|bells|bad news|whisper|trinoids|albert|jester|organ|cellos|boing|bubbles|hysterical|junior|ralph|kathy|superstar|wobble|rocko|shelley|grandma|grandpa|sandy|flo|reed/i.test(name)) score -= 25;
+    return score;
+  }
   function pickVoice() {
     if (!('speechSynthesis' in window)) return;
     const vs = speechSynthesis.getVoices();
-    speech.voice =
-      vs.find(v => /en[-_]GB/i.test(v.lang) && /female|kate|serena|martha|stephanie|google uk english female/i.test(v.name)) ||
-      vs.find(v => /en[-_]GB/i.test(v.lang)) ||
-      vs.find(v => /^en/i.test(v.lang)) || null;
+    let best = null, bestScore = -1;
+    vs.forEach(v => { const sc = voiceScore(v); if (sc > bestScore) { bestScore = sc; best = v; } });
+    speech.voice = best;
+    speech.list = vs.map(v => `${v.name} [${v.lang}]${v === best ? ' *' : ''}`);
   }
   if ('speechSynthesis' in window) {
     speechSynthesis.addEventListener('voiceschanged', pickVoice);
@@ -49,9 +63,10 @@
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(clean);
-      if (speech.voice) u.voice = speech.voice;
-      u.rate = 1;
-      u.pitch = 1.05;
+      if (speech.voice) { u.voice = speech.voice; u.lang = speech.voice.lang; }
+      u.rate = 1.05;   // a touch brisker
+      u.pitch = 1.25;  // and brighter
+      u.volume = 1;
       speechSynthesis.speak(u);
     } catch (e) { /* no speech on this device */ }
   }
@@ -1324,7 +1339,7 @@
   /** Grown-ups: open the game with ?sound or ?debug on the address to see what the phone reports. */
   let badge = null;
   function soundBadge() {
-    if (!/[?&](sound|debug)\b/.test(location.search)) return;
+    if (!/[?&](sound|debug|voices)\b/.test(location.search)) return;
     if (!badge) {
       badge = document.createElement('div');
       badge.style.cssText = 'position:absolute;left:8px;top:8px;z-index:999;background:#000;color:#0f0;font:bold 14px monospace;padding:6px 10px;border-radius:8px;pointer-events:none;';
@@ -1332,6 +1347,11 @@
     }
     const mode = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find(m => matchMedia(`(display-mode: ${m})`).matches) || '?';
     const r = app.getBoundingClientRect();
+    if (/[?&]voices\b/.test(location.search)) {
+      badge.style.whiteSpace = 'pre-wrap'; badge.style.maxWidth = '90%'; badge.style.fontSize = '11px';
+      badge.textContent = 'voices (* = chosen):\n' + (speech.list || []).join('\n');
+      return;
+    }
     badge.textContent = `audio ${Sound.state()} · ${mode}${window.navigator.standalone ? '+apple' : ''} · inner ${window.innerWidth}x${window.innerHeight} · client ${document.documentElement.clientWidth}x${document.documentElement.clientHeight} · screen ${screen.width}x${screen.height} · app ${Math.round(r.width)}x${Math.round(r.height)} @${Math.round(r.left)},${Math.round(r.top)} · rot ${app.classList.contains('rotated')} ${app.style.width}x${app.style.height}`;
   }
 
