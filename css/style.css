@@ -699,6 +699,24 @@ button:active { transform: scale(0.94); }
 .swatch.selected { border-color: #23233a; }
 .swatch.selected::after { content: "✅"; }
 .person-preview { display: flex; justify-content: center; }
+.sheet-card.grownups { width: min(640px, 96%); }
+.grownup-note { margin: 0; font-size: 15px; color: #555; text-align: center; }
+.voice-list { width: 100%; display: flex; flex-direction: column; gap: 8px; max-height: 45vh; overflow-y: auto; touch-action: pan-y; }
+.voice-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 14px; background: #f4f1ff;
+  border: 3px solid transparent;
+}
+.voice-row.chosen { border-color: var(--accent); background: #fff1e6; }
+.voice-row .voice-name { flex: 1; font-size: 15px; line-height: 1.2; }
+.voice-row .voice-name small { display: block; font-size: 12px; color: #777; font-weight: 600; }
+.voice-row button {
+  height: 40px; min-width: 56px; padding: 0 12px; border-radius: 12px;
+  font-size: 15px; background: #fff; box-shadow: 0 3px 0 #c9c9d6;
+}
+.voice-row button.use { background: #7ee787; box-shadow: 0 3px 0 #2e9e3c; }
+.voice-row.chosen button.use { background: #ffb27a; box-shadow: 0 3px 0 #c9601a; }
+.grownup-info { font: 600 11px/1.4 monospace; color: #666; text-align: center; word-break: break-word; }
 .song-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
 .song {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;

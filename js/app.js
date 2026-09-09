@@ -43,11 +43,30 @@
     if (/compact|eloquence|fred|zarvox|bells|bad news|whisper|trinoids|albert|jester|organ|cellos|boing|bubbles|hysterical|junior|ralph|kathy|superstar|wobble|rocko|shelley|grandma|grandpa|sandy|flo|reed/i.test(name)) score -= 25;
     return score;
   }
+  /** Grown-ups can force a voice (from the grown-ups panel, or ?voice=Name); remembered on the device. */
+  function preferredVoiceName() {
+    const m = /[?&]voice=([^&]+)/.exec(location.search);
+    if (m) {
+      const name = decodeURIComponent(m[1]).trim();
+      try { if (name) localStorage.setItem('embers-bus-voice', name); else localStorage.removeItem('embers-bus-voice'); } catch (e) { /* ignore */ }
+      history.replaceState(null, '', location.pathname);
+      return name || null;
+    }
+    try { return localStorage.getItem('embers-bus-voice'); } catch (e) { return null; }
+  }
   function pickVoice() {
     if (!('speechSynthesis' in window)) return;
     const vs = speechSynthesis.getVoices();
+    const wanted = preferredVoiceName();
     let best = null, bestScore = -1;
-    vs.forEach(v => { const sc = voiceScore(v); if (sc > bestScore) { bestScore = sc; best = v; } });
+    vs.forEach(v => {
+      let sc = voiceScore(v);
+      if (wanted) {
+        if (v.voiceURI === wanted) sc += 2000;                                             // exact pick from the panel
+        else if ((v.name || '').toLowerCase().includes(wanted.toLowerCase())) sc += 1000;  // by name
+      }
+      if (sc > bestScore) { bestScore = sc; best = v; }
+    });
     speech.voice = best;
     speech.count = vs.length;
     speech.list = vs.map(v => `${v.name} [${v.lang}] ${v.voiceURI || ''}${v === best ? ' *' : ''}`);
@@ -55,8 +74,10 @@
   if ('speechSynthesis' in window) {
     speechSynthesis.addEventListener('voiceschanged', pickVoice);
     pickVoice();
+    // iPads can be slow to list voices (and never fire voiceschanged): keep looking for a while
+    [300, 1000, 2500, 5000, 10000].forEach(ms => setTimeout(pickVoice, ms));
   }
-  function speak(text) {
+  function speak(text, withVoice) {
     if (!('speechSynthesis' in window)) return;
     const clean = String(text)
       .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
@@ -69,12 +90,87 @@
       if (!speech.voice || speechSynthesis.getVoices().length !== speech.count) pickVoice();
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(clean);
-      if (speech.voice) { u.voice = speech.voice; u.lang = speech.voice.lang; }
+      const v = withVoice || speech.voice;
+      if (v) { u.voice = v; u.lang = v.lang; }
       u.rate = 1.05;   // a touch brisker
       u.pitch = 1.25;  // and brighter
       u.volume = 1;
       speechSynthesis.speak(u);
     } catch (e) { /* no speech on this device */ }
+  }
+
+  /* --- grown-ups panel: hold the destination sign for 2 s ------------------ */
+  function voiceQuality(v) {
+    const id = (v.voiceURI || '') + ' ' + (v.name || '');
+    if (/premium/i.test(id)) return 'Premium';
+    if (/enhanced/i.test(id)) return 'Enhanced';
+    if (/siri/i.test(id)) return 'Siri';
+    if (/natural|neural|online|wavenet|studio/i.test(id)) return 'Natural';
+    if (/compact/i.test(id)) return 'Basic';
+    return '';
+  }
+  function openGrownups() {
+    pickVoice();
+    const list = $('#voice-list');
+    list.innerHTML = '';
+    const vs = ('speechSynthesis' in window) ? speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)) : [];
+    let wanted = null;
+    try { wanted = localStorage.getItem('embers-bus-voice'); } catch (e) { /* ignore */ }
+    const rows = [{ auto: true }].concat(vs.slice().sort((a, b) => voiceScore(b) - voiceScore(a)));
+    rows.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'voice-row';
+      const chosen = v.auto ? !wanted : (v.voiceURI === wanted || (!!wanted && speech.voice === v && !vs.some(x => x.voiceURI === wanted)));
+      if (chosen) row.classList.add('chosen');
+      const name = document.createElement('div');
+      name.className = 'voice-name';
+      if (v.auto) {
+        name.innerHTML = `Automatic (best available)<small>${speech.voice ? 'currently ' + speech.voice.name + ' ' + voiceQuality(speech.voice) : 'no voices found yet'}</small>`;
+      } else {
+        name.innerHTML = `${v.name}<small>${voiceQuality(v)} · ${v.lang}</small>`;
+      }
+      const tryBtn = document.createElement('button');
+      tryBtn.textContent = '▶ Try';
+      tryBtn.addEventListener('click', () => speak(`Hello Ember! Everyone is on the bus. Off we go!`, v.auto ? speech.voice : v));
+      const useBtn = document.createElement('button');
+      useBtn.className = 'use';
+      useBtn.textContent = chosen ? 'Using' : 'Use';
+      useBtn.addEventListener('click', () => {
+        try { if (v.auto) localStorage.removeItem('embers-bus-voice'); else localStorage.setItem('embers-bus-voice', v.voiceURI); } catch (e) { /* ignore */ }
+        pickVoice();
+        openGrownups();
+        speak('This is my voice now!');
+      });
+      row.appendChild(name); row.appendChild(tryBtn); row.appendChild(useBtn);
+      list.appendChild(row);
+    });
+    if (!vs.length) list.innerHTML = '<div class="voice-row"><div class="voice-name">No voices reported yet. Tap Done, tap anywhere in the game, then try again.</div></div>';
+    const mode = ['standalone', 'fullscreen', 'minimal-ui', 'browser'].find(m => matchMedia(`(display-mode: ${m})`).matches) || '?';
+    $('#grownup-info').textContent = `audio ${Sound.state()} · ${mode} · ${window.innerWidth}x${window.innerHeight} · screen ${screen.width}x${screen.height} · voices ${vs.length}`;
+    $('#grownup-sheet').classList.remove('hidden');
+  }
+  function bindGrownups() {
+    let timer = null;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    const start = e => {
+      cancel();
+      timer = setTimeout(() => {
+        timer = null;
+        lastDragEnd = performance.now() + 1500; // the release must not honk or open the door
+        Sound.tap();
+        openGrownups();
+      }, 2000);
+    };
+    ['#tap-horn', '#sign-text', '.sign'].forEach(sel => {
+      const el = $(sel);
+      if (!el) return;
+      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointerup', cancel);
+      el.addEventListener('pointercancel', cancel);
+      el.addEventListener('pointerleave', cancel);
+    });
+    $('#btn-grownup-done').addEventListener('click', () => { Sound.tap(); $('#grownup-sheet').classList.add('hidden'); });
+    $('#grownup-sheet').addEventListener('click', e => { if (e.target === e.currentTarget) $('#grownup-sheet').classList.add('hidden'); });
   }
 
   let toastTimer = null;
@@ -1372,6 +1468,7 @@
     renderInside();
     renderBusFaces();
     bindButtons();
+    bindGrownups();
     bindPersonSheet();
     bindOutsideGestures();
     // Never let the page zoom: block every way in that a page is allowed to block.
@@ -1456,7 +1553,7 @@
     layoutApp();
     // Unlock audio on real user gestures (iOS wants touchend/click), and keep
     // trying until the context is actually running.
-    const unlock = () => { if (!Sound.isRunning()) Sound.unlock(); soundBadge(); };
+    const unlock = () => { if (!Sound.isRunning()) Sound.unlock(); if (!speech.voice) pickVoice(); soundBadge(); };
     ['touchstart', 'touchend', 'click', 'pointerup', 'keydown'].forEach(n => document.addEventListener(n, unlock, { passive: true }));
     // Coming back from the background (home-screen apps especially) can leave audio stuck.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(soundBadge, 100); });
