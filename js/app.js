@@ -25,7 +25,7 @@
   }
 
   /* --- speech: every message is read aloud with the device's own voice --- */
-  const speech = { voice: null };
+  const speech = { voice: null, silent: new Set() }; // silent = voices that made no sound here
   /** Rank installed voices: premium/enhanced first, English (UK) preferred, friendly names first. */
   function voiceScore(v) {
     if (!/^en/i.test(v.lang)) return -1;
@@ -34,9 +34,11 @@
     const id = (v.voiceURI || '') + ' ' + name; // Apple ids say compact / enhanced / premium outright
     if (/premium/i.test(id)) score += 40;
     else if (/enhanced/i.test(id)) score += 20;
-    else if (/siri/i.test(id)) score += 18;
     else if (/natural|neural|online|wavenet|studio/i.test(id)) score += 15; // Edge / Google voices
     if (/compact/i.test(id)) score -= 10;
+    // iPads and iPhones list their Siri voices, but Safari cannot speak with them: silence.
+    if (/siri/i.test(id)) score -= 100;
+    if (speech.silent.has(voiceKey(v))) score -= 500; // proved silent on this device this session
     if (/en[-_]GB/i.test(v.lang)) score += 10;
     else if (/en[-_](AU|IE|NZ)/i.test(v.lang)) score += 6;
     if (/kate|serena|stephanie|martha|moira|karen|samantha|ava|allison|libby|sonia|maisie|google uk english female/i.test(name)) score += 5;
@@ -77,6 +79,28 @@
     // iPads can be slow to list voices (and never fire voiceschanged): keep looking for a while
     [300, 1000, 2500, 5000, 10000].forEach(ms => setTimeout(pickVoice, ms));
   }
+  function voiceKey(v) { return v ? (v.voiceURI || v.name || '') : ''; }
+  /** Forget a remembered voice pick that turned out to be silent, so Automatic takes over again. */
+  function forgetSilentPick(v) {
+    try {
+      const wanted = localStorage.getItem('embers-bus-voice');
+      if (wanted && v && (v.voiceURI === wanted || (v.name || '').toLowerCase().includes(wanted.toLowerCase()))) {
+        localStorage.removeItem('embers-bus-voice');
+      }
+    } catch (e) { /* ignore */ }
+  }
+  /** Best-ranked voice that is not in the given list (used when a voice turns out to be silent). */
+  function nextVoice(skip) {
+    const skipKeys = skip.filter(Boolean).map(voiceKey);
+    let best = null, bestScore = -1;
+    speechSynthesis.getVoices().forEach(v => {
+      if (skipKeys.includes(voiceKey(v))) return;
+      const sc = voiceScore(v);
+      if (sc > bestScore) { bestScore = sc; best = v; }
+    });
+    return best;
+  }
+  let speakTicket = 0; // each new message retires any retry still pending for an older one
   function speak(text, withVoice) {
     if (!('speechSynthesis' in window)) return;
     const clean = String(text)
@@ -85,18 +109,59 @@
       .replace(/\s+/g, ' ')
       .trim();
     if (!clean) return;
-    try {
-      // iPads sometimes hand over the voice list late: re-check before speaking
-      if (!speech.voice || speechSynthesis.getVoices().length !== speech.count) pickVoice();
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(clean);
-      const v = withVoice || speech.voice;
-      if (v) { u.voice = v; u.lang = v.lang; }
-      u.rate = 1.05;   // a touch brisker
-      u.pitch = 1.25;  // and brighter
-      u.volume = 1;
-      speechSynthesis.speak(u);
-    } catch (e) { /* no speech on this device */ }
+    // iPads sometimes hand over the voice list late: re-check before speaking
+    if (!speech.voice || speechSynthesis.getVoices().length !== speech.count) pickVoice();
+    const ticket = ++speakTicket;
+    const tried = [];
+    /* Some voices a device lists cannot actually speak (Siri voices on iPads, a
+       premium voice that never finished downloading, a stale pick from the
+       grown-ups panel). Those fail without a word: no start event, sometimes no
+       end or error either. So each message is watched, and if the voice makes
+       no sound it is dropped and the message is read again with the next best
+       voice, then with the device's own default. A voice is only written off
+       once another one has actually spoken, so a browser that is merely
+       refusing to talk (no tap yet) does not get a good voice blamed. */
+    function attempt(voice, suspect) {
+      if (ticket !== speakTicket) return;
+      tried.push(voice);
+      let started = false, done = false;
+      let watchdog = null;
+      const giveUp = () => {
+        if (done || started || ticket !== speakTicket) return;
+        done = true;
+        clearTimeout(watchdog);
+        if (!voice) return; // already on the device default: nothing left to try
+        const next = tried.length >= 2 ? null : nextVoice(tried);
+        try { speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+        setTimeout(() => attempt(next, voice), 50);
+      };
+      try {
+        // Only interrupt when something is actually being said: on some browsers
+        // cancel() straight before speak() swallows the new message.
+        if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(clean);
+        if (voice) { u.voice = voice; u.lang = voice.lang; }
+        u.rate = 1.05;   // a touch brisker
+        u.pitch = 1.25;  // and brighter
+        u.volume = 1;
+        u.onstart = () => {
+          started = true;
+          clearTimeout(watchdog);
+          if (suspect) { // this voice speaks and the previous one did not: remember that
+            speech.silent.add(voiceKey(suspect));
+            forgetSilentPick(suspect);
+            pickVoice();
+          }
+        };
+        u.onend = () => { if (!started) giveUp(); else done = true; };
+        u.onerror = e => { if (!started && (!e || (e.error !== 'interrupted' && e.error !== 'canceled'))) giveUp(); };
+        // The engine can take a moment to warm up, so give it a generous while before deciding it is silent.
+        watchdog = setTimeout(giveUp, 2500);
+        speech.utter = u; // keep a reference: some browsers drop the utterance (and its events) when garbage-collected
+        speechSynthesis.speak(u);
+      } catch (e) { /* no speech on this device */ }
+    }
+    attempt(withVoice || speech.voice, null);
   }
 
   /* --- grown-ups panel: hold the destination sign for 2 s ------------------ */
@@ -104,10 +169,10 @@
     const id = (v.voiceURI || '') + ' ' + (v.name || '');
     if (/premium/i.test(id)) return 'Premium';
     if (/enhanced/i.test(id)) return 'Enhanced';
-    if (/siri/i.test(id)) return 'Siri';
+    if (/siri/i.test(id)) return 'Siri - usually silent in the browser';
     if (/natural|neural|online|wavenet|studio/i.test(id)) return 'Natural';
     if (/compact/i.test(id)) return 'Basic';
-    return '';
+    return speech.silent.has(voiceKey(v)) ? 'made no sound here' : '';
   }
   function openGrownups() {
     pickVoice();
