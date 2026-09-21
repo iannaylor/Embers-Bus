@@ -101,18 +101,34 @@
     return best;
   }
   let speakTicket = 0; // each new message retires any retry still pending for an older one
-  function speak(text, withVoice) {
-    if (!('speechSynthesis' in window)) return;
-    const clean = String(text)
+  /**
+   * Read a message aloud. onDone (optional) is called exactly once, when the
+   * message has been said, could not be said, or was cut short by a newer one.
+   */
+  function speak(text, withVoice, onDone) {
+    const clean = ('speechSynthesis' in window) ? String(text)
       .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '')
       .replace(/…/g, '.')
       .replace(/\s+/g, ' ')
-      .trim();
-    if (!clean) return;
+      .trim() : '';
+    if (!clean) { if (onDone) onDone(); return; }
     // iPads sometimes hand over the voice list late: re-check before speaking
     if (!speech.voice || speechSynthesis.getVoices().length !== speech.count) pickVoice();
+    if (speech.finish) speech.finish(); // a newer message cuts the old one short: let its follow-up run now
     const ticket = ++speakTicket;
     const tried = [];
+    let finished = false, sounding = false;
+    // Wraps up the whole message: music comes back up, the follow-up runs. Once only.
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(finishCap);
+      if (speech.finish === finish) speech.finish = null;
+      if (sounding) Sound.speechEnded();
+      if (onDone) onDone();
+    };
+    speech.finish = finish;
+    const finishCap = setTimeout(finish, 12000); // no browser should leave the music ducked for ever
     /* Some voices a device lists cannot actually speak (Siri voices on iPads, a
        premium voice that never finished downloading, a stale pick from the
        grown-ups panel). Those fail without a word: no start event, sometimes no
@@ -130,7 +146,7 @@
         if (done || started || ticket !== speakTicket) return;
         done = true;
         clearTimeout(watchdog);
-        if (!voice) return; // already on the device default: nothing left to try
+        if (!voice) { finish(); return; } // already on the device default: nothing left to try
         const next = tried.length >= 2 ? null : nextVoice(tried);
         try { speechSynthesis.cancel(); } catch (e) { /* ignore */ }
         setTimeout(() => attempt(next, voice), 50);
@@ -147,19 +163,23 @@
         u.onstart = () => {
           started = true;
           clearTimeout(watchdog);
+          if (ticket === speakTicket && !finished) { sounding = true; Sound.speechStarted(); }
           if (suspect) { // this voice speaks and the previous one did not: remember that
             speech.silent.add(voiceKey(suspect));
             forgetSilentPick(suspect);
             pickVoice();
           }
         };
-        u.onend = () => { if (!started) giveUp(); else done = true; };
-        u.onerror = e => { if (!started && (!e || (e.error !== 'interrupted' && e.error !== 'canceled'))) giveUp(); };
+        u.onend = () => { if (!started) giveUp(); else { done = true; if (ticket === speakTicket) finish(); } };
+        u.onerror = e => {
+          if (started) { done = true; if (ticket === speakTicket) finish(); }
+          else if (!e || (e.error !== 'interrupted' && e.error !== 'canceled')) giveUp();
+        };
         // The engine can take a moment to warm up, so give it a generous while before deciding it is silent.
         watchdog = setTimeout(giveUp, 2500);
         speech.utter = u; // keep a reference: some browsers drop the utterance (and its events) when garbage-collected
         speechSynthesis.speak(u);
-      } catch (e) { /* no speech on this device */ }
+      } catch (e) { finish(); /* no speech on this device */ }
     }
     attempt(withVoice || speech.voice, null);
   }
@@ -239,13 +259,23 @@
   }
 
   let toastTimer = null;
-  function toast(msg, ms) {
+  let toastSpeak = null; // { timer, onDone } for a message not yet handed to the voice
+  /** Show a message above the bus and read it aloud; onDone runs once it has been said (or could not be). */
+  function toast(msg, ms, onDone) {
     const el = $('#toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), ms || 2200);
-    speak(msg);
+    if (toastSpeak) { // a newer message replaces one still waiting its turn
+      clearTimeout(toastSpeak.timer);
+      const prev = toastSpeak; toastSpeak = null;
+      if (prev.onDone) prev.onDone();
+    }
+    // The words come a moment after the picture: the tap's own click / hiss / beep
+    // gets heard first (on iPads the voice silences everything else while it talks),
+    // so the child knows straight away that the tap counted.
+    toastSpeak = { onDone, timer: setTimeout(() => { toastSpeak = null; speak(msg, null, onDone); }, 250) };
   }
 
   const outside = $('#outside');
@@ -559,8 +589,14 @@
     renderInside();
   }
 
+  let lastBelt = { seat: null, at: 0 };
   function onTap(el, info) {
     if (info.from === 'seat') {
+      // A second tap on the same seat within a third of a second is a bounce, not a
+      // change of mind: undoing the buckle that fast just feels like the first tap failed.
+      const now = performance.now();
+      if (info.seat === lastBelt.seat && now - lastBelt.at < 350) return;
+      lastBelt = { seat: info.seat, at: now };
       const on = Store.toggleBelt(info.seat);
       el.classList.toggle('belted', on);
       if (on) { Sound.beltClick(); toast(`Click! ${Store.person(info.id).name || 'Friend'} is buckled in 🙂`); }
@@ -1116,14 +1152,24 @@
     $$('.song').forEach(b => b.classList.toggle('playing', b.dataset.id === cur));
     $('#btn-music').classList.toggle('active', !!cur);
   }
+  let songTicket = 0;
   function playSong(id) {
-    Sound.melodyStart(id);
     const song = Sound.songs().find(s => s.id === id);
-    refreshSongList();
-    toast(`🎵 ${song ? song.name : 'Music'}`);
+    const ticket = ++songTicket;
+    Sound.melodyStop();
+    $$('.song').forEach(b => b.classList.toggle('playing', b.dataset.id === id)); // lit while it is announced
+    $('#btn-music').classList.add('active');
     setTimeout(() => $('#music-sheet').classList.add('hidden'), 180);
+    // Say the title first, then start the tune: on iPads the voice and the music
+    // cannot sound at once, so talking over the intro would just stop the song.
+    toast(`🎵 ${song ? song.name : 'Music'}`, 2200, () => {
+      if (ticket !== songTicket) return; // another song (or stop) was chosen meanwhile
+      Sound.melodyStart(id);
+      refreshSongList();
+    });
   }
   function stopMusic() {
+    songTicket++; // also cancels a song that is still being announced
     Sound.melodyStop();
     refreshSongList();
   }

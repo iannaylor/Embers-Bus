@@ -15,6 +15,11 @@
   let melodyPlaying = false;
   let muted = false;
   let unlockAudioEl = null;   // silent <audio> that puts iOS into "playback" mode (beats the ringer switch)
+  let speaking = false;       // a spoken message is playing: music dips under it (or, on iOS, waits for it)
+  let melodyEnd = 0;          // audio-clock time the current pass of the song finishes
+  let resumeTimer = null;
+  let resumeTries = 0;
+  const FULL = 0.9, DUCKED = 0.3;
 
   // 0.25 s of 16-bit mono silence as a WAV data URL (the format every browser plays).
   function silentWav() {
@@ -33,17 +38,44 @@
   }
 
   let unlockAttempts = 0;
+  let lastUnlockAt = 0;
+  let lastSpeechEnd = -1e9;
   function createContext() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.9;
+    master.gain.value = muted ? 0 : FULL;
     master.connect(ctx.destination);
     noise = null;
     engine = null;
-    ctx.onstatechange = () => { Sound.onState && Sound.onState(ctx.state); };
+    ctx.onstatechange = () => {
+      Sound.onState && Sound.onState(ctx.state);
+      // iOS pauses ("interrupts") the context whenever the device speaks, and does
+      // not always hand the speaker back: if a song or the engine was running, ask.
+      if (ctx.state === 'running') resumeTries = 0;
+      else if (melodyPlaying || engine) scheduleResume(300);
+    };
     return ctx;
+  }
+  function scheduleResume(delay) {
+    if (resumeTimer) return;
+    resumeTimer = setTimeout(() => {
+      resumeTimer = null;
+      if (!ctx || ctx.state === 'running' || ctx.state === 'closed') return;
+      if (!melodyPlaying && !engine) return;      // nothing that needs to carry on; the next tap unlocks as usual
+      if (speaking) { scheduleResume(400); return; } // wait for the voice: resuming under it would cut it off
+      if (resumeTries++ >= 8) return;               // properly stuck: leave it to the next tap (unlock rebuilds it)
+      ctx.resume().catch(() => {});
+      scheduleResume(1000);
+    }, delay);
+  }
+  function setMasterGain(value, smooth) {
+    if (!master || !ctx) return;
+    const g = master.gain, t = ctx.currentTime;
+    g.cancelScheduledValues(t);
+    if (smooth) { g.setValueAtTime(g.value, t); g.setTargetAtTime(value, t, smooth); }
+    else g.setValueAtTime(value, t);
   }
   /** Throw the context away (iOS home-screen apps can leave it stuck "interrupted"). */
   function resetContext() {
@@ -122,11 +154,18 @@
      * ringer switch on silent. Safe to call repeatedly.
      */
     unlock() {
-      // A context that stays stuck after a couple of real taps gets rebuilt.
-      if (ctx && ctx.state !== 'running') {
-        unlockAttempts++;
+      // A context that stays stuck after a couple of real taps gets rebuilt. While the
+      // device is speaking, iOS holds the context paused on purpose, so that is not
+      // "stuck": rebuilding it then would throw away the song and the tap's own sound.
+      // One finger tap arrives as several events, so attempts are counted per tap.
+      const now = performance.now();
+      if (ctx && ctx.state !== 'running' && ctx.state !== 'closed' && (speaking || now - lastSpeechEnd < 1500)) {
+        ctx.resume().catch(() => {}); // harmless if iOS says no; the voice's end resumes it anyway
+      } else if (ctx && ctx.state !== 'running') {
+        if (now - lastUnlockAt > 400) unlockAttempts++;
         if (unlockAttempts >= 2 || ctx.state === 'closed' || ctx.state === 'interrupted') { resetContext(); unlockAttempts = 0; }
       }
+      lastUnlockAt = now;
       const c = ensure();
       if (c && c.state !== 'running') {
         c.resume().then(() => { if (c.state === 'running') unlockAttempts = 0; }).catch(() => {});
@@ -160,7 +199,20 @@
 
     setMuted(m) {
       muted = m;
-      if (master) master.gain.value = m ? 0 : 0.9;
+      setMasterGain(m ? 0 : (speaking ? DUCKED : FULL));
+    },
+    /* --- spoken messages: dip the music under the voice, and take the speaker back afterwards --- */
+    speechStarted() {
+      speaking = true;
+      if (!muted) setMasterGain(DUCKED, 0.05);
+    },
+    speechEnded() {
+      speaking = false;
+      lastSpeechEnd = performance.now();
+      if (!muted) setMasterGain(FULL, 0.15);
+      // iOS hands the speaker to the voice and does not always give it back.
+      if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') { resumeTries = 0; ctx.resume().catch(() => {}); scheduleResume(600); }
+      if (unlockAudioEl && unlockAudioEl.paused) unlockAudioEl.play().catch(() => {});
     },
     isMuted() { return muted; },
 
@@ -434,8 +486,16 @@
       const f = (b % 4 === 2) ? bassFreq * 1.5 : bassFreq;
       melodyNodes.push(tone(f, 'square', bt, BEAT * 0.45, 0.28, { attack: 0.01, lowpass: 500 }));
     }
-    const total = (t - start) * 1000;
-    melodyTimer = setTimeout(scheduleMelody, total + 300);
+    melodyEnd = t;
+    melodyTimer = setTimeout(tickMelody, 150);
+  }
+  /** Wait for the end of the pass by the audio clock, not the wall clock: if the
+      device pauses the context (iOS does while it speaks), the song simply carries
+      on from where it was instead of piling a new pass on top of the old one. */
+  function tickMelody() {
+    if (!melodyPlaying) return;
+    if (ctx.state === 'running' && ctx.currentTime >= melodyEnd + 0.25) { scheduleMelody(); return; }
+    melodyTimer = setTimeout(tickMelody, 150);
   }
 
   window.Sound = Sound;
